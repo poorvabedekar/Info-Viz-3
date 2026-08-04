@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sample Visualization</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+      background: #f4f1ec;
+      color: #2c2a26;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .page-shell {
+      width: min(100%, 1100px);
+      background: #fff;
+      border-radius: 28px;
+      box-shadow: 0 20px 60px rgba(34, 30, 24, 0.12);
+      overflow: hidden;
+    }
+
+    header {
+      padding: 40px 48px 24px;
+      border-bottom: 1px solid rgba(44, 42, 38, 0.08);
+      background: linear-gradient(180deg, #fff, #f6f2eb);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: clamp(2rem, 2.5vw, 3rem);
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+    }
+
+    header p {
+      margin: 18px 0 0;
+      max-width: 680px;
+      color: #60594f;
+      font-size: 1rem;
+      line-height: 1.8;
+    }
+
+    .chart-card {
+      padding: 32px 40px 40px;
+    }
+
+    .chart-caption {
+      margin: 0 0 24px;
+      font-size: 0.95rem;
+      color: #6d655c;
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+      overflow: visible;
+    }
+
+    .axis-line {
+      stroke: #c8c2b9;
+      stroke-width: 1;
+    }
+
+    .grid-line {
+      stroke: #e6e1d9;
+      stroke-width: 1;
+    }
+
+    .bar-sales {
+      fill: #a1754c;
+    }
+
+    .bar-profit {
+      fill: #d2b89d;
+    }
+
+    .tick-text,
+    .label-text,
+    .legend-text {
+      fill: #4e473f;
+      font-size: 0.95rem;
+    }
+
+    .legend {
+      display: inline-flex;
+      gap: 18px;
+      align-items: center;
+      margin-top: 18px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend-marker {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <header>
+      <h1>Sample Visualization</h1>
+      <p>Sales and profit by area from <strong>Sample_data.csv</strong>. This grouped bar chart compares how each area performs on revenue and margin.</p>
+    </header>
+    <section class="chart-card">
+      <p class="chart-caption">Values are shown in thousands for easy comparison.</p>
+      <svg id="chart" viewBox="0 0 900 520" aria-labelledby="chart-title chart-desc">
+        <title id="chart-title">Sample Visualization</title>
+        <desc id="chart-desc">Grouped bar chart showing sales and profit for each area.</desc>
+      </svg>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-marker" style="background:#a1754c"></span><span class="legend-text">Sales</span></div>
+        <div class="legend-item"><span class="legend-marker" style="background:#d2b89d"></span><span class="legend-text">Profit</span></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    async function loadCsv(url) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Unable to load CSV');
+      const text = await response.text();
+      return text.trim().split('\n').map(line => line.split(',')).slice(1).map(([area, sales, profit]) => ({
+        area,
+        sales: Number(sales),
+        profit: Number(profit)
+      }));
+    }
+
+    function drawChart(data) {
+      const svg = document.getElementById('chart');
+      const width = 900;
+      const height = 520;
+      const margin = { top: 50, right: 40, bottom: 90, left: 80 };
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+      const keys = ['sales', 'profit'];
+      const colors = { sales: '#a1754c', profit: '#d2b89d' };
+
+      const maxValue = Math.max(...data.flatMap(d => keys.map(k => d[k])));
+      const yScale = value => innerHeight - (value / (maxValue * 1.08)) * innerHeight;
+      const categoryCount = data.length;
+      const bandWidth = innerWidth / categoryCount;
+      const groupWidth = bandWidth * 0.7;
+      const barWidth = groupWidth / keys.length;
+
+      // Clear any existing chart children
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+      const chartGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      chartGroup.setAttribute('transform', `translate(${margin.left},${margin.top})`);
+      svg.appendChild(chartGroup);
+
+      // Draw horizontal grid and y-axis labels
+      const steps = 5;
+      for (let i = 0; i <= steps; i++) {
+        const value = (maxValue * 1.08 * i) / steps;
+        const y = yScale(value);
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', 0);
+        line.setAttribute('x2', innerWidth);
+        line.setAttribute('y1', y);
+        line.setAttribute('y2', y);
+        line.setAttribute('class', 'grid-line');
+        chartGroup.appendChild(line);
+
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', -14);
+        label.setAttribute('y', y + 4);
+        label.setAttribute('text-anchor', 'end');
+        label.setAttribute('class', 'tick-text');
+        label.textContent = Math.round(value);
+        chartGroup.appendChild(label);
+      }
+
+      // Draw Y axis and X axis
+      const yAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      yAxis.setAttribute('x1', 0);
+      yAxis.setAttribute('y1', 0);
+      yAxis.setAttribute('x2', 0);
+      yAxis.setAttribute('y2', innerHeight);
+      yAxis.setAttribute('class', 'axis-line');
+      chartGroup.appendChild(yAxis);
+
+      const xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      xAxis.setAttribute('x1', 0);
+      xAxis.setAttribute('y1', innerHeight);
+      xAxis.setAttribute('x2', innerWidth);
+      xAxis.setAttribute('y2', innerHeight);
+      xAxis.setAttribute('class', 'axis-line');
+      chartGroup.appendChild(xAxis);
+
+      // Draw bars
+      data.forEach((row, index) => {
+        const x0 = index * bandWidth + (bandWidth - groupWidth) / 2;
+
+        keys.forEach((key, keyIndex) => {
+          const barHeight = innerHeight - yScale(row[key]);
+          const x = x0 + keyIndex * barWidth;
+          const y = yScale(row[key]);
+          const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          rect.setAttribute('x', x);
+          rect.setAttribute('y', y);
+          rect.setAttribute('width', barWidth - 12);
+          rect.setAttribute('height', barHeight);
+          rect.setAttribute('rx', 6);
+          rect.setAttribute('class', key === 'sales' ? 'bar-sales' : 'bar-profit');
+          chartGroup.appendChild(rect);
+
+          const valueLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          valueLabel.setAttribute('x', x + (barWidth - 12) / 2);
+          valueLabel.setAttribute('y', y - 8);
+          valueLabel.setAttribute('text-anchor', 'middle');
+          valueLabel.setAttribute('class', 'label-text');
+          valueLabel.textContent = row[key];
+          chartGroup.appendChild(valueLabel);
+        });
+
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', x0 + groupWidth / 2 - 6);
+        label.setAttribute('y', innerHeight + 26);
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('class', 'tick-text');
+        label.textContent = row.area;
+        chartGroup.appendChild(label);
+      });
+    }
+
+    loadCsv('Sample_data.csv')
+      .then(drawChart)
+      .catch(error => {
+        const chart = document.getElementById('chart');
+        chart.innerHTML = `<text x="50%" y="50%" text-anchor="middle" fill="#5f564d">Unable to load data: ${error.message}</text>`;
+      });
+  </script>
+</body>
+</html>
