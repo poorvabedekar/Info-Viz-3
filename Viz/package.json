@@ -1,0 +1,14 @@
+{
+  "name": "090a72baef10ae14",
+  "main": "090a72baef10ae14@37.js",
+  "version": "37.0.0",
+  "homepage": "https://observablehq.com/d/090a72baef10ae14",
+  "author": {
+    "name": "National Institute of Design",
+    "url": "https://observablehq.com/@national-institute-of-design12"
+  },
+  "type": "module",
+  "peerDependencies": {
+    "@observablehq/runtime": "4 - 5"
+  }
+}
