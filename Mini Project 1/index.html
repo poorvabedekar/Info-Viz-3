@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exam Leak Incidents Analysis</title>
+  
+  <!-- Load Google Fonts for clean typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Load D3 and Observable Plot Libraries directly via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6"></script>
+
+  <style>
+    /* CSS Styles & Page Typography */
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      color: #222222;
+      background-color: #fcfcfc;
+      line-height: 1.6;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 8px;
+    }
+
+    .intro-text {
+      font-size: 1.05rem;
+      color: #4b5563;
+      margin-bottom: 30px;
+    }
+
+    /* Container for Filters */
+    .controls-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      background: #f3f4f6;
+      padding: 18px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .control-group label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .control-group select {
+      padding: 8px 12px;
+      font-size: 0.9rem;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background-color: #ffffff;
+      outline: none;
+    }
+
+    /* Visualization Canvas Container */
+    #chart-container {
+      background: #ffffff;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      margin-bottom: 36px;
+    }
+
+    /* Insight Cards Section */
+    .insights-section {
+      margin-top: 40px;
+    }
+
+    .insights-section h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .insight-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .insight-card {
+      background: #ffffff;
+      border-left: 4px solid #2563eb;
+      border-top: 1px solid #e5e7eb;
+      border-right: 1px solid #e5e7eb;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 16px 20px;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .insight-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-top: 0;
+      margin-bottom: 8px;
+      color: #1e3a8a;
+    }
+
+    .insight-card p {
+      font-size: 0.9rem;
+      color: #4b5563;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Title & Context Paragraphs -->
+  <h1>Exam Leak Incidents: Patterns & Trends</h1>
+  <p class="intro-text">
+    Exam paper leaks present significant structural challenges to educational and recruitment systems. 
+    This visual database maps verified and alleged exam leak incidents over time across various categories. 
+    Use the dropdown controls below to highlight specific body types, confirmation statuses, or action outcomes.
+  </p>
+
+  <!-- Filter Controls -->
+  <div class="controls-container">
+    <div class="control-group">
+      <label for="bodyFilter">Conducting Body Type</label>
+      <select id="bodyFilter">
+        <option value="All">All Types</option>
+        <option value="Central">Central</option>
+        <option value="State">State</option>
+        <option value="Private">Private</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label for="statusFilter">Leak Confirmation Status</label>
+      <select id="statusFilter">
+        <option value="All">All Statuses</option>
+        <option value="Confirmed">Confirmed</option>
+        <option value="Alleged or Unconfirmed">Alleged or Unconfirmed</option>
+        <option value="Claim Dismissed">Claim Dismissed</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label for="actionFilter">Action Taken</label>
+      <select id="actionFilter">
+        <option value="All">All Actions</option>
+        <option value="Re-exam">Re-exam</option>
+        <option value="Exam Cancelled">Exam Cancelled</option>
+        <option value="No Re-exam">No Re-exam</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Chart Container -->
+  <div id="chart-container"></div>
+
+  <!-- Key Insights Section Below Chart -->
+  <div class="insights-section">
+    <h2>Key Structural Insights</h2>
+    <div class="insight-grid">
+      <div class="insight-card">
+        <h3>Concentration by Year</h3>
+        <p>Observe how clusters expand in specific years, signaling systemic surges in reporting or targeted leak vulnerabilities across specific sectors.</p>
+      </div>
+      <div class="insight-card">
+        <h3>State vs. Central Impact</h3>
+        <p>Filter by <strong>State</strong> versus <strong>Central</strong> to evaluate whether administrative scale correlates with the frequency of re-examinations ordered.</p>
+      </div>
+      <div class="insight-card">
+        <h3>Cancellation Decisions</h3>
+        <p>Comparing <strong>Confirmed</strong> status against <strong>Action Taken</strong> highlights variations in institutional response thresholds across states.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Plot Script -->
+  <script>
+    let rawData = [];
+
+    // Load data file (Ensure data.json is in the same directory)
+    d3.json("data.json").then(data => {
+      rawData = data;
+      renderChart(); // Draw chart on initial load
+
+      // Attach listener events to dropdowns to update opacity when changed
+      document.getElementById("bodyFilter").addEventListener("change", renderChart);
+      document.getElementById("statusFilter").addEventListener("change", renderChart);
+      document.getElementById("actionFilter").addEventListener("change", renderChart);
+    });
+
+    function renderChart() {
+      // Get current dropdown values
+      const bodyVal = document.getElementById("bodyFilter").value;
+      const statusVal = document.getElementById("statusFilter").value;
+      const actionVal = document.getElementById("actionFilter").value;
+
+      // Construct Observable Plot chart
+      const chart = Plot.plot({
+        width: 860,
+        height: 420,
+        grid: true,
+        x: {
+          label: "Year →",
+          tickFormat: "d"
+        },
+        y: {
+          label: "↑ Number of Exam Leak Incidents",
+          ticks: 0
+        },
+        color: {
+          legend: true,
+          label: "Exam Category"
+        },
+        marks: [
+          Plot.dot(
+            rawData, 
+            Plot.dodgeY("middle", {
+              x: "Year",
+              fill: "Exam Category",
+              
+              // Conditional opacity based on standard DOM dropdown values
+              fillOpacity: (d) => {
+                const matchBody = bodyVal === "All" || d["Conducting Body Type"] === bodyVal;
+                const matchStatus = statusVal === "All" || d["Leak Confirmation Status"] === statusVal;
+                const matchAction = actionVal === "All" || d["Action Taken"] === actionVal;
+
+                return (matchBody && matchStatus && matchAction) ? 1.0 : 0.2;
+              },
+              
+              title: (d) => `Exam: ${d["Exam name"]}\nCategory: ${d["Exam Category"]}\nYear: ${d.Year}\nBody: ${d["Conducting Body Type"]}\nStatus: ${d["Leak Confirmation Status"]}\nAction: ${d["Action Taken"]}`,
+              r: 5,
+              padding: 1.5,
+              tip: true
+            })
+          )
+        ]
+      });
+
+      // Insert generated SVG plot inside container element
+      const container = document.getElementById("chart-container");
+      container.innerHTML = ""; // Clear existing plot
+      container.appendChild(chart);
+    }
+  </script>
+</body>
+</html>

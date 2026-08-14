@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What Does a Leading Lady Sound Like?</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Iosevka:wght@400;700&display=swap');
+        
+        @font-face {
+            font-family: 'Bernard MT Condensed';
+            src: local('Bernard MT Condensed'), local('Impact'), local('Arial Black');
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #DCC8A0;
+            color: #1a1a1a;
+            font-family: 'Iosevka', monospace;
+            font-size: 24px;
+        }
+
+        #presentation {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #DCC8A0 url('BG2.jpg') no-repeat center center / cover;
+            overflow: hidden;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.6s ease-in-out, visibility 0.6s;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Nav Buttons */
+        .nav-btn {
+            position: fixed;
+            bottom: 30px;
+            padding: 12px 24px;
+            font-family: 'Iosevka', monospace;
+            font-size: 20px;
+            font-weight: bold;
+            background-color: #1a1a1a;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            border-radius: 6px;
+            z-index: 999;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .nav-btn:hover { background-color: #333; }
+        #prevBtn { right: 140px; }
+        #nextBtn { right: 30px; }
+
+        /* Titles & Text */
+        h1.title {
+            font-family: 'Bernard MT Condensed', 'Impact', sans-serif;
+            font-size: 80px;
+            line-height: 1.0;
+            color: #111;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        p.body-text {
+            font-family: 'Iosevka', monospace;
+            font-size: 22px;
+            line-height: 1.4;
+            color: #222;
+            margin-bottom: 20px;
+        }
+
+        /* Slide 1 Specific */
+        #slide1 { padding: 0; align-items: center; justify-content: center; background: #000; }
+        #slide1 img { width: 100%; height: 100%; object-fit: contain; }
+
+        /* Slides 2 & 3 Layout */
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: center;
+            height: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .voice-card-container {
+            position: relative;
+            width: 100%;
+            max-width: 650px;
+            margin: 0 auto;
+        }
+
+        .voice-card-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 8px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        /* Audio Play Buttons Overlay */
+        .play-btn {
+            position: absolute;
+            left: -25px;
+            width: 50px;
+            height: 50px;
+            background: #000;
+            color: #fff;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            transition: transform 0.2s;
+        }
+        .play-btn:hover { transform: scale(1.1); background: #333; }
+        .play-soprano { top: 12%; }
+        .play-mezzo { top: 45%; }
+        .play-contralto { top: 78%; }
+
+        /* Slide 3 Notes */
+        .note-box {
+            position: absolute;
+            left: -320px;
+            width: 280px;
+            background: rgba(255, 255, 255, 0.92);
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 16px;
+            color: #111;
+            border-left: 5px solid #111;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        /* Slide 4 & 5 Charts */
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            max-width: 1600px;
+            margin: 0 auto 20px auto;
+            width: 100%;
+        }
+
+        .controls-bar {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            max-width: 1600px;
+            margin: 0 auto 20px auto;
+            width: 100%;
+        }
+        .controls-bar input {
+            padding: 10px 14px;
+            font-family: 'Iosevka', monospace;
+            font-size: 18px;
+            border: 1px solid #888;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.8);
+            width: 220px;
+        }
+
+        .legend-group {
+            display: flex;
+            gap: 20px;
+            margin-left: auto;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .legend-dot { width: 18px; height: 18px; border-radius: 50%; }
+
+        .chart-viewport {
+            width: 100%;
+            max-width: 1600px;
+            height: 480px;
+            margin: 0 auto;
+        }
+
+        .tooltip {
+            position: absolute;
+            padding: 10px;
+            font-family: 'Iosevka', monospace;
+            font-size: 15px;
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            border-radius: 4px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 1000;
+        }
+
+        .footer-source {
+            position: absolute;
+            bottom: 35px;
+            left: 50px;
+            font-size: 16px;
+            color: #444;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Audio Player Elements -->
+    <audio id="audio-soprano" src="Soprano_Lag ja gale.mp3"></audio>
+    <audio id="audio-mezzo" src="Mezzo_Saami Saami.mp3"></audio>
+    <audio id="audio-contralto" src="Contralto_Rambha Ho.mp3"></audio>
+
+    <div id="presentation">
+        
+        <!-- SLIDE 1 -->
+        <div class="slide active" id="slide1">
+            <img src="Slide 1.jpg" alt="What Does a Leading Lady Sound Like?" onerror="this.src='Slide1.jpg'">
+        </div>
+
+        <!-- SLIDE 2 -->
+        <div class="slide" id="slide2">
+            <div class="grid-2col">
+                <div>
+                    <h1 class="title">Can you hear<br>the change?</h1>
+                    <p class="body-text">For decades, if a Bollywood heroine broke into song on screen, her voice almost always shared one distinct quality: a light, soaring, crystalline high pitch.</p>
+                    <p class="body-text">But voice isn't a rigid box. Every singer brings a unique mix of pitch, texture, resonance, and song emotion. So how did we get from one dominant sound to the rich, varied vocal palette we hear today?</p>
+                </div>
+                <div class="voice-card-container">
+                    <img src="Voice Types.jpg" alt="Voice Types">
+                    <button class="play-btn play-soprano" onclick="playTrack('audio-soprano')">▶</button>
+                    <button class="play-btn play-mezzo" onclick="playTrack('audio-mezzo')">▶</button>
+                    <button class="play-btn play-contralto" onclick="playTrack('audio-contralto')">▶</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 3 -->
+        <div class="slide" id="slide3">
+            <div class="grid-2col">
+                <div>
+                    <h1 class="title">Let’s<br>understand</h1>
+                    <p class="body-text">For decades, if a Bollywood heroine broke into song on screen, her voice almost always shared one distinct quality: a light, soaring, crystalline high pitch.</p>
+                    <p class="body-text">But voice isn't a rigid box. Every singer brings a unique mix of pitch, texture, resonance, and song emotion. So how did we get from one dominant sound to the rich, varied vocal palette we hear today?</p>
+                </div>
+                <div class="voice-card-container">
+                    <div class="note-box play-soprano"><strong>SOPRANO:</strong> High, light, soaring, crystalline tone</div>
+                    <div class="note-box play-mezzo"><strong>MEZZO-SOPRANO:</strong> Warm, versatile, rich middle-register</div>
+                    <div class="note-box play-contralto"><strong>CONTRALTO:</strong> Deep, earthy, grounded, low-frequency texture</div>
+                    
+                    <img src="Voice Types.jpg" alt="Voice Types">
+                    <button class="play-btn play-soprano" onclick="playTrack('audio-soprano')">▶</button>
+                    <button class="play-btn play-mezzo" onclick="playTrack('audio-mezzo')">▶</button>
+                    <button class="play-btn play-contralto" onclick="playTrack('audio-contralto')">▶</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 4 -->
+        <div class="slide" id="slide4">
+            <div class="chart-header">
+                <h1 class="title" style="font-size: 70px;">45 Years of Top Hits</h1>
+                <p class="body-text" style="max-width: 600px; font-size: 18px;">A singer’s biological voice spans multiple notes and styles across different songs. Voice types assigned here reflect the singer’s primary performance across their top-charting playback catalog.</p>
+            </div>
+            
+            <div class="controls-bar" id="controls-s4">
+                <input type="text" id="search-singer" placeholder="Search Singer...">
+                <input type="text" id="search-song" placeholder="Search Song...">
+                
+                <div class="legend-group">
+                    <div class="legend-item" onclick="toggleFilter('Soprano')">
+                        <div class="legend-dot" style="background:#FFDC69;"></div> Soprano
+                    </div>
+                    <div class="legend-item" onclick="toggleFilter('Mezzo-Soprano')">
+                        <div class="legend-dot" style="background:#FF6E7F;"></div> Mezzo-Soprano
+                    </div>
+                    <div class="legend-item" onclick="toggleFilter('Contralto')">
+                        <div class="legend-dot" style="background:#9B02D4;"></div> Contralto
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-viewport" id="chart-area-s4"></div>
+            <div class="footer-source">Data Source: indpaedia.com</div>
+        </div>
+
+        <!-- SLIDE 5 -->
+        <div class="slide" id="slide5">
+            <div class="chart-header">
+                <h1 class="title" style="font-size: 70px;">What drived this change?</h1>
+                <p class="body-text" style="max-width: 600px; font-size: 18px;">In the 1980s and 90s, lower registers were rare exceptions. But as we move into the 2010s and 2020s, the playback singing embraces various voice textures and types.</p>
+            </div>
+            
+            <div class="chart-viewport" id="chart-area-s5"></div>
+            <div class="footer-source">Data Source: indpaedia.com</div>
+        </div>
+
+        <!-- Navigation Controls -->
+        <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">Previous</button>
+        <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">Next</button>
+    </div>
+
+    <script>
+        // --- Navigation Controller ---
+        let currentSlide = 1;
+        const totalSlides = 5;
+
+        function updateSlideVisibility() {
+            document.querySelectorAll('.slide').forEach((slide, idx) => {
+                if (idx + 1 === currentSlide) {
+                    slide.classList.add('active');
+                } else {
+                    slide.classList.remove('active');
+                }
+            });
+
+            document.getElementById('prevBtn').style.display = currentSlide === 1 ? 'none' : 'block';
+            document.getElementById('nextBtn').style.display = currentSlide === totalSlides ? 'none' : 'block';
+            
+            stopAudio();
+
+            // Move the chart SVG dynamically between Slide 4 and Slide 5
+            const chartSvg = document.getElementById('beeswarm-svg');
+            if (chartSvg) {
+                if (currentSlide === 4) {
+                    document.getElementById('chart-area-s4').appendChild(chartSvg);
+                } else if (currentSlide === 5) {
+                    document.getElementById('chart-area-s5').appendChild(chartSvg);
+                }
+            }
+        }
+
+        function changeSlide(direction) {
+            currentSlide = Math.max(1, Math.min(totalSlides, currentSlide + direction));
+            updateSlideVisibility();
+        }
+
+        // --- Audio Control ---
+        function playTrack(audioId) {
+            stopAudio();
+            const el = document.getElementById(audioId);
+            if (el) el.play().catch(e => console.log('Audio autoplay prevented:', e));
+        }
+
+        function stopAudio() {
+            ['audio-soprano', 'audio-mezzo', 'audio-contralto'].forEach(id => {
+                const audio = document.getElementById(id);
+                if (audio) { audio.pause(); audio.currentTime = 0; }
+            });
+        }
+
+        updateSlideVisibility();
+
+        // --- D3 Beeswarm Chart ---
+        const activeFilters = { 'Soprano': true, 'Mezzo-Soprano': true, 'Contralto': true };
+        let nodeSelection;
+
+        const chartWidth = 1400;
+        const chartHeight = 450;
+        const margin = { top: 20, right: 50, bottom: 50, left: 50 };
+
+        const colorMap = d3.scaleOrdinal()
+            .domain(['Soprano', 'Mezzo-Soprano', 'Contralto'])
+            .range(['#FFDC69', '#FF6E7F', '#9B02D4']);
+
+        const tooltip = d3.select("body").append("div").attr("class", "tooltip");
+
+        const svg = d3.select("#chart-area-s4")
+            .append("svg")
+            .attr("id", "beeswarm-svg")
+            .attr("viewBox", `0 0 ${chartWidth} ${chartHeight}`)
+            .attr("width", "100%")
+            .attr("height", "100%");
+
+        // Sample Data Fallback (used if CORS blocks reading female_only_cleanest.csv locally)
+        const mockData = [
+            { "Song Name": "Lag Ja Gale", "Singer": "Lata Mangeshkar", "Movie": "Woh Kaun Thi", "Year": 1984, "Voice Type": "Soprano" },
+            { "Song Name": "Saami Saami (Hindi)", "Singer": "Sunidhi Chauhan", "Movie": "Pushpa", "Year": 2021, "Voice Type": "Mezzo-Soprano" },
+            { "Song Name": "Rambha Ho", "Singer": "Usha Uthup", "Movie": "Armaan", "Year": 1981, "Voice Type": "Contralto" }
+        ];
+
+        d3.csv("female_only_cleanest.csv").then(renderChart).catch(() => {
+            console.warn("CSV could not be loaded directly. Rendering with sample dataset.");
+            renderChart(mockData);
+        });
+
+        function renderChart(data) {
+            data.forEach(d => d.Year = +d.Year);
+
+            const xScale = d3.scaleLinear()
+                .domain([1981, 2026])
+                .range([margin.left, chartWidth - margin.right]);
+
+            const xAxis = d3.axisBottom(xScale).tickFormat(d3.format("d")).ticks(10);
+
+            svg.append("g")
+                .attr("transform", `translate(0, ${chartHeight - margin.bottom})`)
+                .call(xAxis)
+                .selectAll("text")
+                .style("font-family", "Iosevka, monospace")
+                .style("font-size", "16px");
+
+            svg.append("text")
+                .attr("x", chartWidth - margin.right)
+                .attr("y", chartHeight - 10)
+                .text("year")
+                .style("font-family", "Iosevka, monospace")
+                .style("font-weight", "bold");
+
+            const simulation = d3.forceSimulation(data)
+                .force("x", d3.forceX(d => xScale(d.Year)).strength(1))
+                .force("y", d3.forceY((chartHeight - margin.bottom) / 2).strength(0.15))
+                .force("collide", d3.forceCollide(7))
+                .stop();
+
+            for (let i = 0; i < 120; ++i) simulation.tick();
+
+            nodeSelection = svg.selectAll("circle")
+                .data(data)
+                .enter().append("circle")
+                .attr("r", d => (d['Song Name'] && d['Song Name'].includes('Saami Saami')) ? 10 : 6)
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y)
+                .attr("fill", d => colorMap(d['Voice Type']))
+                .attr("stroke", d => (d['Song Name'] && d['Song Name'].includes('Saami Saami')) ? "#000" : "#222")
+                .attr("stroke-width", d => (d['Song Name'] && d['Song Name'].includes('Saami Saami')) ? 2.5 : 0.5)
+                .on("mouseover", (event, d) => {
+                    tooltip.transition().duration(150).style("opacity", 1);
+                    tooltip.html(`
+                        <strong>Song:</strong> ${d['Song Name'] || d.Song || 'N/A'}<br/>
+                        <strong>Singer:</strong> ${d.Singer || 'N/A'}<br/>
+                        <strong>Movie:</strong> ${d.Movie || 'N/A'}<br/>
+                        <strong>Year:</strong> ${d.Year}
+                    `)
+                    .style("left", (event.pageX + 12) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+                })
+                .on("mouseout", () => tooltip.transition().duration(300).style("opacity", 0));
+
+            // Filtering Listener
+            const singerInput = document.getElementById('search-singer');
+            const songInput = document.getElementById('search-song');
+
+            function filterChart() {
+                const singerVal = singerInput.value.toLowerCase();
+                const songVal = songInput.value.toLowerCase();
+
+                nodeSelection.style("opacity", d => {
+                    const matchCategory = activeFilters[d['Voice Type']];
+                    const matchSinger = (d.Singer || '').toLowerCase().includes(singerVal);
+                    const matchSong = (d['Song Name'] || d.Song || '').toLowerCase().includes(songVal);
+                    
+                    return (matchCategory && matchSinger && matchSong) ? 1 : 0.1;
+                });
+            }
+
+            if (singerInput && songInput) {
+                singerInput.addEventListener('input', filterChart);
+                songInput.addEventListener('input', filterChart);
+            }
+
+            window.toggleFilter = function(type) {
+                activeFilters[type] = !activeFilters[type];
+                filterChart();
+            };
+        }
+    </script>
+</body>
+</html>

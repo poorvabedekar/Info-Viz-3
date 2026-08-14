@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What Does a Leading Lady Sound Like?</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script src="assets/d3.min.js"></script>
+
+<style>
+@font-face{
+  font-family:'OswaldEmbed';
+  src: url('assets/Oswald.ttf') format('truetype-variations');
+  font-weight: 200 700;
+  font-display: swap;
+}
+@font-face{
+  font-family:'PlexMonoEmbed';
+  src: url('assets/IBMPlexMono-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root{
+  --font-title: 'Bernard MT Condensed', 'Oswald', 'OswaldEmbed', 'Bevan', Georgia, serif;
+  --font-body: 'Iosevka Charon', 'Iosevka', 'IBM Plex Mono', 'PlexMonoEmbed', 'Courier New', monospace;
+
+  --ink: #1c1408;
+  --ink-soft: #3a2f1c;
+  --paper: #E7CE9E;
+  --paper-light: #F1E2BE;
+  --paper-mid: #DEC793;
+  --paper-dark: #C7A96F;
+  --paper-deep: #B89457;
+
+  --soprano: #FFDC69;
+  --mezzo: #FF6E7F;
+  --contralto: #9B02D4;
+
+  --stage-w: 1920;
+  --stage-h: 1080;
+}
+
+*{ box-sizing: border-box; }
+
+html,body{
+  margin:0; padding:0; width:100%; height:100%;
+  background:#0b0806;
+  overflow:hidden;
+  font-family: var(--font-body);
+}
+
+/* ---------- Stage scaling shell ---------- */
+.viewport{
+  position:fixed; inset:0;
+  display:flex; flex-direction:column;
+  background:
+    radial-gradient(ellipse at 50% 40%, #171009 0%, #0b0806 70%);
+}
+
+.stage-holder{
+  flex:1 1 auto;
+  min-height:0;
+  display:flex; align-items:center; justify-content:center;
+}
+
+.stage{
+  position:relative;
+  width:1920px; height:1080px;
+  flex:none;
+  transform-origin: center center;
+  box-shadow: 0 40px 120px rgba(0,0,0,0.65);
+}
+
+/* ---------- Slides ---------- */
+.slide{
+  position:absolute; inset:0;
+  width:1920px; height:1080px;
+  overflow:hidden;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  background:var(--paper);
+  transform: translateX(0) scale(1);
+  transition: opacity 900ms cubic-bezier(.22,.61,.36,1), transform 900ms cubic-bezier(.22,.61,.36,1), visibility 0s linear 900ms;
+}
+.slide.active{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+  transform: translateX(0) scale(1);
+  transition: opacity 900ms cubic-bezier(.22,.61,.36,1), transform 900ms cubic-bezier(.22,.61,.36,1);
+  z-index:5;
+}
+.slide.exit-left{ transform: translateX(-4%) scale(0.985); opacity:0; z-index:4; }
+.slide.exit-right{ transform: translateX(4%) scale(0.985); opacity:0; z-index:4; }
+.slide.enter-left{ transform: translateX(-4%) scale(0.985); }
+.slide.enter-right{ transform: translateX(4%) scale(0.985); }
+
+.slide-bg{
+  position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center;
+}
+.slide-bg-color{
+  position:absolute; inset:0; width:100%; height:100%;
+}
+
+/* ---------- Navigation ---------- */
+.nav-controls{
+  position:relative;
+  flex:none;
+  height:84px;
+  width:100%;
+  display:flex; align-items:center; justify-content:center;
+  gap:18px;
+  z-index:100;
+  pointer-events:none;
+}
+.nav-btn{
+  pointer-events:auto;
+  width:52px; height:52px;
+  border-radius:50%;
+  border:1.5px solid rgba(231,206,158,0.35);
+  background:rgba(15,10,6,0.55);
+  backdrop-filter: blur(6px);
+  color:#E7CE9E;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+  transition: all 200ms ease;
+}
+.nav-btn:hover{
+  background:rgba(231,206,158,0.16);
+  border-color:rgba(231,206,158,0.7);
+  transform:translateY(-2px);
+}
+.nav-btn:active{ transform:translateY(0px) scale(0.94); }
+.nav-btn.disabled{ opacity:0.25; pointer-events:none; }
+.nav-btn svg{ width:20px; height:20px; }
+
+.nav-dots{
+  pointer-events:auto;
+  display:flex; align-items:center; gap:9px;
+  padding:0 6px;
+}
+.nav-dot{
+  width:7px; height:7px; border-radius:50%;
+  background:rgba(231,206,158,0.3);
+  cursor:pointer;
+  transition: all 250ms ease;
+}
+.nav-dot.active{ background:#E7CE9E; width:22px; border-radius:4px; }
+
+.slide-index{
+  position:absolute;
+  right:36px; top:50%; transform:translateY(-50%);
+  z-index:100;
+  color:rgba(231,206,158,0.55);
+  font-family: var(--font-body);
+  font-size:13px;
+  letter-spacing:0.12em;
+  pointer-events:none;
+}
+
+/* Fit-to-screen note for extremely small viewports */
+@media (max-width: 480px){
+  .nav-btn{ width:42px; height:42px; }
+}
+
+/* ============================================================
+   SLIDE 1 : TITLE
+   ============================================================ */
+.s1-title-wrap{
+  position:absolute;
+  left:0; right:0; top:828px; bottom:0;
+  display:flex; align-items:flex-start; justify-content:center;
+  padding: 0 90px;
+}
+.s1-title{
+  margin:0;
+  font-family: var(--font-title);
+  font-weight:700;
+  font-size:100pt;
+  line-height:0.88;
+  letter-spacing:0.002em;
+  color:#171008;
+  text-align:center;
+  text-wrap: balance;
+}
+
+/* ============================================================
+   SHARED TEXT STYLES
+   ============================================================ */
+.slide-title{
+  margin:0 0 26px 0;
+  font-family: var(--font-title);
+  font-weight:700;
+  font-size:100pt;
+  line-height:0.94;
+  color:#171008;
+  max-width:700px;
+}
+.body-text{
+  font-family: var(--font-body);
+  font-size:24pt;
+  line-height:1.4;
+  color:#291f0f;
+  margin:0 0 18px 0;
+  max-width:700px;
+}
+
+/* ============================================================
+   SLIDE 2 & 3 : VOICE PANEL
+   ============================================================ */
+.voice-copy{
+  position:absolute;
+  left:100px; top:96px;
+  width:760px;
+}
+.voice-panel{
+  position:absolute;
+  right:0; top:0;
+  width:830px; height:1080px;
+  display:flex; flex-direction:column;
+}
+.voice-row{
+  position:relative;
+  flex:1;
+  display:flex; align-items:center;
+  gap:42px;
+  padding: 0 64px;
+}
+.voice-row:nth-child(1){ background:var(--paper-light); }
+.voice-row:nth-child(2){ background:var(--paper-mid); }
+.voice-row:nth-child(3){ background:var(--paper-dark); }
+
+.play-btn{
+  flex:none;
+  width:76px; height:76px;
+  background:#15100a;
+  border:none;
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition: transform 180ms ease, background 180ms ease;
+  padding:0;
+}
+.play-btn:hover{ transform:scale(1.06); background:#000; }
+.play-btn:active{ transform:scale(0.95); }
+.play-tri{
+  width:0; height:0;
+  border-top:15px solid transparent;
+  border-bottom:15px solid transparent;
+  border-left:24px solid #F1E2BE;
+  margin-left:5px;
+  transition: border-left-color 150ms ease;
+}
+.play-btn.is-playing{
+  background:#000;
+}
+.play-btn.is-playing .play-tri{
+  width:22px; height:26px;
+  border:none;
+  margin-left:0;
+  background:
+    linear-gradient(#F1E2BE,#F1E2BE) left / 8px 100% no-repeat,
+    linear-gradient(#F1E2BE,#F1E2BE) right / 8px 100% no-repeat;
+}
+
+.voice-photos{
+  flex:none;
+  display:flex; gap:18px;
+}
+.voice-photos img{
+  width:255px; height:262px;
+  object-fit:cover;
+  display:block;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+}
+
+/* tint overlays for slide 3 */
+.voice-photos--soprano{ position:relative; }
+.voice-photos--mezzo{ position:relative; }
+.voice-photos--contralto{ position:relative; }
+.voice-panel--tinted .voice-photos{ position:relative; }
+.voice-panel--tinted .voice-photos::after{
+  content:"";
+  position:absolute; inset:0;
+  pointer-events:none;
+  mix-blend-mode: color;
+}
+.voice-panel--tinted .voice-photos--soprano::after{ background:var(--soprano); }
+.voice-panel--tinted .voice-photos--mezzo::after{ background:var(--mezzo); }
+.voice-panel--tinted .voice-photos--contralto::after{ background:var(--contralto); }
+
+.voice-note{
+  flex:none;
+  width:300px;
+  background:rgba(255,255,255,0.28);
+  border:1px solid rgba(23,16,8,0.18);
+  padding:22px 24px;
+  font-family: var(--font-body);
+  font-size:15pt;
+  line-height:1.4;
+  color:#1c1408;
+  position:relative;
+}
+.voice-note strong{ display:block; margin-bottom:2px; letter-spacing:0.02em; }
+.note-tail{
+  position:absolute;
+  right:-14px; top:50%; margin-top:-14px;
+  width:0; height:0;
+  border-top:14px solid transparent;
+  border-bottom:14px solid transparent;
+  border-left:14px solid rgba(255,255,255,0.28);
+}
+.voice-row:nth-child(1) .note-tail{ border-left-color:#efe3c5; }
+.voice-row:nth-child(2) .note-tail{ border-left-color:#e2cda2; }
+.voice-row:nth-child(3) .note-tail{ border-left-color:#d0b586; }
+.voice-row:nth-child(1) .voice-note{ background:#efe3c5; border-color:rgba(23,16,8,0.1);}
+.voice-row:nth-child(2) .voice-note{ background:#e2cda2; border-color:rgba(23,16,8,0.1);}
+.voice-row:nth-child(3) .voice-note{ background:#d0b586; border-color:rgba(23,16,8,0.1);}
+.voice-note{ box-shadow: 2px 3px 0 rgba(23,16,8,0.06); }
+.note-tail{ filter: drop-shadow(2px 0 0 rgba(23,16,8,0.04)); }
+
+/* Slide 3: tighter proportions to make room for the note callouts */
+.voice-panel--tinted .voice-row{ padding:0 50px; gap:24px; }
+.voice-panel--tinted .voice-note{ width:206px; font-size:13.5pt; padding:16px 18px; }
+.voice-panel--tinted .play-btn{ width:70px; height:70px; }
+.voice-panel--tinted .play-tri{ border-top-width:13px; border-bottom-width:13px; border-left-width:20px; margin-left:4px; }
+.voice-panel--tinted .voice-photos{ gap:12px; }
+.voice-panel--tinted .voice-photos img{ width:196px; height:212px; }
+
+/* ============================================================
+   SLIDES 4-6 : CHART
+   ============================================================ */
+.chart-header{
+  position:absolute;
+  left:100px; top:64px; right:100px;
+  display:flex; justify-content:space-between; align-items:flex-start;
+  gap:60px;
+}
+.chart-title{
+  margin:0;
+  font-family: var(--font-title);
+  font-weight:700;
+  font-size:64pt;
+  line-height:1;
+  color:#171008;
+  flex:none;
+  max-width:820px;
+}
+.chart-subtitle{
+  font-family: var(--font-body);
+  font-size:13.5pt;
+  line-height:1.5;
+  color:#291f0f;
+  max-width:520px;
+  margin:6px 0 0 0;
+  flex:none;
+}
+
+.search-bars{
+  position:absolute;
+  left:100px; top:246px;
+  display:flex; gap:20px;
+}
+.search-input{
+  width:290px;
+  padding:14px 18px;
+  background:rgba(255,255,255,0.35);
+  border:1px solid rgba(23,16,8,0.25);
+  font-family: var(--font-body);
+  font-size:13pt;
+  color:#1c1408;
+  outline:none;
+}
+.search-input::placeholder{ color:rgba(28,20,8,0.55); }
+.search-input:focus{ border-color:rgba(23,16,8,0.6); background:rgba(255,255,255,0.55); }
+
+.legend{
+  position:absolute;
+  right:100px; top:250px;
+  display:flex; gap:26px;
+}
+.legend-item{
+  display:flex; align-items:center; gap:9px;
+  font-family: var(--font-body);
+  font-size:13pt;
+  color:#1c1408;
+  cursor:pointer;
+  opacity:1;
+  transition: opacity 200ms ease;
+  user-select:none;
+}
+.legend--static .legend-item{ cursor:default; }
+.legend-item.is-off{ opacity:0.32; }
+.legend-dot{
+  width:15px; height:15px; border-radius:50%;
+  display:inline-block;
+  flex:none;
+}
+
+.chart-svg{
+  position:absolute; inset:0;
+  width:1920px; height:1080px;
+  pointer-events:none;
+}
+.chart-svg .dots-g circle{
+  pointer-events:auto;
+}
+.highlight-svg{
+  position:absolute; inset:0;
+  width:1920px; height:1080px;
+  pointer-events:none;
+}
+
+.chart-tooltip{
+  position:absolute;
+  display:none;
+  background:#161009;
+  color:#F1E2BE;
+  padding:12px 16px;
+  font-family: var(--font-body);
+  font-size:13px;
+  line-height:1.45;
+  max-width:320px;
+  pointer-events:none;
+  z-index:50;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+}
+.chart-tooltip .tt-song{ font-weight:600; margin-bottom:3px; color:#FFDC69; }
+.chart-tooltip .tt-meta{ opacity:0.85; }
+
+.chart-note{
+  position:absolute;
+  right:100px; bottom:56px;
+  font-family: var(--font-body);
+  font-size:13pt;
+  color:rgba(28,20,8,0.6);
+}
+
+/* Slide 6 poster highlight callouts */
+.poster-callout{
+  position:absolute;
+  width:118px;
+  text-align:left;
+  z-index:20;
+}
+.poster-callout--dhoom{ left:820px; top:236px; }
+.poster-callout--fashion{ left:975px; top:236px; }
+.poster-label{
+  font-family: var(--font-body);
+  font-weight:500;
+  font-size:13pt;
+  color:#1c1408;
+  margin-bottom:6px;
+}
+.poster-callout img{
+  width:100%;
+  display:block;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+}
+</style>
+</head>
+<body>
+
+<div class="viewport">
+  <div class="stage-holder">
+    <div class="stage" id="stage">
+      <!-- ============ SLIDE 1 : TITLE ============ -->
+      <section class="slide active" data-slide="0">
+        <img class="slide-bg" src="assets/TitleBG.jpg" alt="">
+        <div class="s1-title-wrap">
+          <h1 class="s1-title">What Does a Leading Lady Sound Like?</h1>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 2 : CAN YOU HEAR THE CHANGE ============ -->
+      <section class="slide" data-slide="1">
+        <img class="slide-bg" src="assets/BG2.jpg" alt="">
+        <div class="voice-copy">
+          <h2 class="slide-title">Can you hear the change?</h2>
+          <p class="body-text">For decades, if a Bollywood heroine broke into song on screen, her voice almost always shared one distinct quality: a light, soaring, crystalline high pitch.</p>
+          <p class="body-text">But voice isn't a rigid box. Every singer brings a unique mix of pitch, texture, resonance, and song emotion. So how did we get from one dominant sound to the rich, varied vocal palette we hear today?</p>
+        </div>
+        <div class="voice-panel">
+          <div class="voice-row" data-type="Soprano">
+            <button class="play-btn" data-audio="soprano" aria-label="Play soprano example"><span class="play-tri"></span></button>
+            <div class="voice-photos">
+              <img src="assets/photos/row1_c1.jpg" alt="Soprano singer">
+              <img src="assets/photos/row1_c2.jpg" alt="Soprano singer">
+            </div>
+          </div>
+          <div class="voice-row" data-type="Mezzo-Soprano">
+            <button class="play-btn" data-audio="mezzo" aria-label="Play mezzo-soprano example"><span class="play-tri"></span></button>
+            <div class="voice-photos">
+              <img src="assets/photos/row2_c1.jpg" alt="Mezzo-soprano singer">
+              <img src="assets/photos/row2_c2.jpg" alt="Mezzo-soprano singer">
+            </div>
+          </div>
+          <div class="voice-row" data-type="Contralto">
+            <button class="play-btn" data-audio="contralto" aria-label="Play contralto example"><span class="play-tri"></span></button>
+            <div class="voice-photos">
+              <img src="assets/photos/row3_c1.jpg" alt="Contralto singer">
+              <img src="assets/photos/row3_c2.jpg" alt="Contralto singer">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 3 : LET'S UNDERSTAND ============ -->
+      <section class="slide" data-slide="2">
+        <img class="slide-bg" src="assets/BG2.jpg" alt="">
+        <div class="voice-copy">
+          <h2 class="slide-title">Let&rsquo;s understand</h2>
+          <p class="body-text">For decades, if a Bollywood heroine broke into song on screen, her voice almost always shared one distinct quality: a light, soaring, crystalline high pitch.</p>
+          <p class="body-text">But voice isn't a rigid box. Every singer brings a unique mix of pitch, texture, resonance, and song emotion. So how did we get from one dominant sound to the rich, varied vocal palette we hear today?</p>
+        </div>
+        <div class="voice-panel voice-panel--tinted">
+          <div class="voice-row" data-type="Soprano">
+            <div class="voice-note voice-note--soprano">
+              <strong>SOPRANO:</strong> High, light, soaring, crystalline tone
+              <span class="note-tail"></span>
+            </div>
+            <button class="play-btn" data-audio="soprano" aria-label="Play soprano example"><span class="play-tri"></span></button>
+            <div class="voice-photos voice-photos--soprano">
+              <img src="assets/photos/row1_c1.jpg" alt="Soprano singer">
+              <img src="assets/photos/row1_c2.jpg" alt="Soprano singer">
+            </div>
+          </div>
+          <div class="voice-row" data-type="Mezzo-Soprano">
+            <div class="voice-note voice-note--mezzo">
+              <strong>MEZZO-SOPRANO:</strong> Warm, versatile, rich middle-register
+              <span class="note-tail"></span>
+            </div>
+            <button class="play-btn" data-audio="mezzo" aria-label="Play mezzo-soprano example"><span class="play-tri"></span></button>
+            <div class="voice-photos voice-photos--mezzo">
+              <img src="assets/photos/row2_c1.jpg" alt="Mezzo-soprano singer">
+              <img src="assets/photos/row2_c2.jpg" alt="Mezzo-soprano singer">
+            </div>
+          </div>
+          <div class="voice-row" data-type="Contralto">
+            <div class="voice-note voice-note--contralto">
+              <strong>CONTRALTO:</strong> Deep, earthy, grounded, low-frequency texture
+              <span class="note-tail"></span>
+            </div>
+            <button class="play-btn" data-audio="contralto" aria-label="Play contralto example"><span class="play-tri"></span></button>
+            <div class="voice-photos voice-photos--contralto">
+              <img src="assets/photos/row3_c1.jpg" alt="Contralto singer">
+              <img src="assets/photos/row3_c2.jpg" alt="Contralto singer">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 4 : 45 YEARS OF TOP HITS ============ -->
+      <section class="slide" data-slide="3">
+        <div class="slide-bg-color" style="background:var(--paper);"></div>
+        <div class="chart-header">
+          <h2 class="chart-title">45 Years of Top Hits</h2>
+          <p class="chart-subtitle">A singer&rsquo;s biological voice spans multiple notes and styles across different songs. Voice types assigned here reflect the singer&rsquo;s primary performance across their top-charting playback catalog.</p>
+        </div>
+        <div class="search-bars">
+          <input type="text" class="search-input" id="searchSinger4" placeholder="Singer Name">
+          <input type="text" class="search-input" id="searchSong4" placeholder="Song Name">
+        </div>
+        <div class="legend" id="legend4">
+          <div class="legend-item is-active" data-type="Soprano"><span class="legend-dot" style="background:#FFDC69"></span>Soprano</div>
+          <div class="legend-item is-active" data-type="Mezzo-Soprano"><span class="legend-dot" style="background:#FF6E7F"></span>Mezzo-Soprano</div>
+          <div class="legend-item is-active" data-type="Contralto"><span class="legend-dot" style="background:#9B02D4"></span>Contralto</div>
+        </div>
+        <svg class="chart-svg" id="chart4"></svg>
+        <div class="chart-tooltip" id="tooltip4"></div>
+        <div class="chart-note">Data Source: indpaedia.com</div>
+      </section>
+
+      <!-- ============ SLIDE 5 : WHAT DRIVED THIS CHANGE ============ -->
+      <section class="slide" data-slide="4">
+        <img class="slide-bg" src="assets/BG2.jpg" alt="">
+        <div class="chart-header">
+          <h2 class="chart-title">What drived this change?</h2>
+          <p class="chart-subtitle">In the 1980s and 90s, lower registers were rare exceptions. But as we move into the 2010s and 2020s, the playback singing embraces various voice textures and types.</p>
+        </div>
+        <div class="legend legend--static" id="legend5">
+          <div class="legend-item is-active" data-type="Soprano"><span class="legend-dot" style="background:#FFDC69"></span>Soprano</div>
+          <div class="legend-item is-active" data-type="Mezzo-Soprano"><span class="legend-dot" style="background:#FF6E7F"></span>Mezzo-Soprano</div>
+          <div class="legend-item is-active" data-type="Contralto"><span class="legend-dot" style="background:#9B02D4"></span>Contralto</div>
+        </div>
+        <svg class="chart-svg" id="chart5"></svg>
+        <div class="chart-tooltip" id="tooltip5"></div>
+        <div class="chart-note">Data Source: indpaedia.com</div>
+      </section>
+
+      <!-- ============ SLIDE 6 : THE MULTI-DIMENSIONAL LEAD ============ -->
+      <section class="slide" data-slide="5">
+        <img class="slide-bg" src="assets/BG2.jpg" alt="">
+        <div class="chart-header">
+          <h2 class="chart-title">The Multi-Dimensional Lead</h2>
+          <p class="chart-subtitle">The classic heroine was archetype-bound: innocent, self-sacrificing, and sweet-voiced. Modern female leads are morally complex, assertive, and grounded. A deeper vocal range reflects this emotional weight.</p>
+        </div>
+        <div class="legend" id="legend6">
+          <div class="legend-item is-active" data-type="Soprano"><span class="legend-dot" style="background:#FFDC69"></span>Soprano</div>
+          <div class="legend-item is-active" data-type="Mezzo-Soprano"><span class="legend-dot" style="background:#FF6E7F"></span>Mezzo-Soprano</div>
+          <div class="legend-item is-active" data-type="Contralto"><span class="legend-dot" style="background:#9B02D4"></span>Contralto</div>
+        </div>
+
+        <div class="poster-callout poster-callout--dhoom" id="calloutDhoom">
+          <div class="poster-label">Dhoom</div>
+          <img src="assets/Dhoom.jpg" alt="Dhoom poster">
+        </div>
+        <div class="poster-callout poster-callout--fashion" id="calloutFashion">
+          <div class="poster-label">Fashion</div>
+          <img src="assets/Fashion.jpg" alt="Fashion poster">
+        </div>
+
+        <svg class="chart-svg" id="chart6"></svg>
+        <svg class="highlight-svg" id="highlight6"></svg>
+        <div class="chart-tooltip" id="tooltip6"></div>
+        <div class="chart-note">Data Source: indpaedia.com</div>
+      </section>
+
+      <!--SLIDES_GO_HERE-->
+    </div>
+  </div>
+
+  <div class="nav-controls">
+    <button class="nav-btn" id="prevBtn" aria-label="Previous slide">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="nav-dots" id="navDots"></div>
+    <button class="nav-btn" id="nextBtn" aria-label="Next slide">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="slide-index"><span id="slideIndexCurrent">01</span> / 06</div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   STAGE SCALING
+   ============================================================ */
+const stage = document.getElementById('stage');
+const stageHolder = document.querySelector('.stage-holder');
+function fitStage(){
+  const vw = stageHolder.clientWidth, vh = stageHolder.clientHeight;
+  const scale = Math.min(vw/1920, vh/1080) * 0.96;
+  stage.style.transform = `scale(${scale})`;
+}
+window.addEventListener('resize', fitStage);
+fitStage();
+
+/* ============================================================
+   SLIDE NAVIGATION
+   ============================================================ */
+const TOTAL_SLIDES = 6;
+let current = 0;
+let isAnimating = false;
+
+const slideEls = () => Array.from(document.querySelectorAll('.slide'));
+const navDots = document.getElementById('navDots');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const slideIndexEl = document.getElementById('slideIndexCurrent');
+
+function buildDots(){
+  navDots.innerHTML = '';
+  for(let i=0;i<TOTAL_SLIDES;i++){
+    const d = document.createElement('div');
+    d.className = 'nav-dot' + (i===0 ? ' active' : '');
+    d.addEventListener('click', ()=> goToSlide(i));
+    navDots.appendChild(d);
+  }
+}
+
+function updateDots(){
+  Array.from(navDots.children).forEach((d,i)=> d.classList.toggle('active', i===current));
+}
+
+function updateNavButtons(){
+  prevBtn.classList.toggle('disabled', current===0);
+  nextBtn.classList.toggle('disabled', current===TOTAL_SLIDES-1);
+  slideIndexEl.textContent = String(current+1).padStart(2,'0');
+}
+
+function goToSlide(idx){
+  if(idx<0 || idx>=TOTAL_SLIDES || idx===current || isAnimating) return;
+  if(typeof stopAllAudio === 'function') stopAllAudio();
+  const dir = idx > current ? 1 : -1;
+  const slides = slideEls();
+  const prevSlide = slides[current];
+  const nextSlide = slides[idx];
+
+  isAnimating = true;
+
+  nextSlide.classList.remove('exit-left','exit-right');
+  nextSlide.classList.add(dir>0 ? 'enter-right' : 'enter-left');
+  nextSlide.style.visibility = 'visible';
+  // force reflow
+  void nextSlide.offsetWidth;
+
+  prevSlide.classList.add(dir>0 ? 'exit-left' : 'exit-right');
+  prevSlide.classList.remove('active');
+
+  nextSlide.classList.remove('enter-left','enter-right');
+  nextSlide.classList.add('active');
+
+  current = idx;
+  updateDots();
+  updateNavButtons();
+  onSlideEnter(current);
+  onSlideLeave(prevSlide.dataset.slide);
+
+  setTimeout(()=>{
+    prevSlide.classList.remove('exit-left','exit-right');
+    isAnimating = false;
+  }, 950);
+}
+
+prevBtn.addEventListener('click', ()=> goToSlide(current-1));
+nextBtn.addEventListener('click', ()=> goToSlide(current+1));
+
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='ArrowRight' || e.key===' '){ goToSlide(current+1); }
+  else if(e.key==='ArrowLeft'){ goToSlide(current-1); }
+});
+
+let touchStartX = null;
+document.addEventListener('touchstart', e=>{ touchStartX = e.touches[0].clientX; });
+document.addEventListener('touchend', e=>{
+  if(touchStartX===null) return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if(Math.abs(dx) > 60){ dx < 0 ? goToSlide(current+1) : goToSlide(current-1); }
+  touchStartX = null;
+});
+
+/* Hooks for slide-specific logic, defined later per-slide */
+const slideEnterHooks = {};
+const slideLeaveHooks = {};
+function onSlideEnter(idx){ if(slideEnterHooks[idx]) slideEnterHooks[idx](); }
+function onSlideLeave(idx){ if(slideLeaveHooks[idx]) slideLeaveHooks[idx](); }
+
+buildDots();
+updateNavButtons();
+
+/* ============================================================
+   CHART DATA
+   ============================================================ */
+const SONG_DATA = [{"year": 1981, "song": "Mere anganey mein", "movie": "Laawaris", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1981, "song": "Zindagi ki na toote ladi", "movie": "Kranti", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1981, "song": "Mere naseeb mein tu hai ke nahin", "movie": "Naseeb", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1981, "song": "Yaad aa rahi hai", "movie": "Love Story", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1981, "song": "Tere mere beech mein", "movie": "Ek Duje Ke Liye", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1981, "song": "Tum Tum Taraaraa, Chanaa Jor Garam Baabu", "movie": "Kranti", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1981, "song": "Mere Jivan Saathi, Pyar Kiye Ja", "movie": "Ek Duje Ke Liye", "singer": "Anuradha Paudwal", "type": "Soprano"}, {"year": 1981, "song": "Dekho maine dekha hai yeh ek sapna", "movie": "Love Story", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1981, "song": "Hari Om Hari", "movie": "Pyara Dushman", "singer": "Usha Uthup", "type": "Contralto"}, {"year": 1982, "song": "Angrezi Men Kahate Hain Ke I Love You", "movie": "Khud-Daar", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1982, "song": "Rambha Ho Ho Main Naachu Tum Naacho", "movie": "Armaan", "singer": "Usha Uthup", "type": "Contralto"}, {"year": 1982, "song": "Kitane Bhi Tu Kar Le Sitam, Sanam Teri Qasam", "movie": "Sanam Teri Kasam", "singer": "Asha Bhosle", "type": "Soprano"}, {"year": 1982, "song": "Main Hu Prem Rogi", "movie": "Prem Rog", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1982, "song": "Bolo Bolo Kuch To Bolo Samne Wale Le Gaye Bazi", "movie": "Zamaane Ko Dikhana Hai", "singer": "Asha Bhosle", "type": "Soprano"}, {"year": 1982, "song": "Dil Chiz Kya Hai, Aap Meri Jaan Lijiye", "movie": "Umrao Jaan", "singer": "Asha Bhosle", "type": "Soprano"}, {"year": 1982, "song": "Mohabbat Hai Kyaa Chiz, Hamko Bataao", "movie": "Prem Rog", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1986, "song": "Yashoda ka Nand Braj ka ujala hai", "movie": "Sanjog", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1986, "song": "Tarzan, O my Tarzan", "movie": "Tarzan", "singer": "Alisha Chinai", "type": "Mezzo-Soprano"}, {"year": 1986, "song": "Har karam apna kareingay, ai sanam terey liye", "movie": "Karma", "singer": "Kavita Krishnamurthy", "type": "Soprano"}, {"year": 1986, "song": "Pyar do, pyar lo", "movie": "Janbaaz", "singer": "Sadhana Sargam", "type": "Soprano"}, {"year": 1986, "song": "Zindagi har qadam ik nai jung hai", "movie": "Meri Jung (1985)", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1986, "song": "Jee lay lay,  jee lay lay, aayo- ayo,  jee lay lay", "movie": "Tarzan", "singer": "Alisha Chinai", "type": "Mezzo-Soprano"}, {"year": 1986, "song": "Peena haraam hai, na pilaana haraam hai", "movie": "Chameli ki Shaadi", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1986, "song": "Tera saath hai kitna pyara", "movie": "Janbaaz", "singer": "Sapna Mukherjee", "type": "Mezzo-Soprano"}, {"year": 1983, "song": "Shayad meri shaadi ka khayal", "movie": "Souten", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1983, "song": "Dil ki yeh aarzoo thi koi dilruba mila", "movie": "Nikaah", "singer": "Salma Agha", "type": "Contralto"}, {"year": 1983, "song": "Dil  ka arman asuon me beh gaya", "movie": "Nikaah", "singer": "Salma Agha", "type": "Contralto"}, {"year": 1983, "song": "Jab hum jawan honge", "movie": "Betaab", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1983, "song": "Naino mein sapna", "movie": "Himmatwala", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1983, "song": "Saat saheliya", "movie": "Vidhaata", "singer": "Alka Yagnik, Anuradha Paudwal, Sadhana Sargam", "type": "Soprano"}, {"year": 1983, "song": "Ai dil-ae-naadaan,, aarzoo kya hai?", "movie": "Razia Sultan", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1983, "song": "A aa, i ee, you oo, ay aiy", "movie": "Vidhaata", "singer": "Sadhana Sargam", "type": "Soprano"}, {"year": 1983, "song": "Tujh sang preet lagayi sajna", "movie": "Kaamchor", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1984, "song": "Tu mera janoo hai, tu mera dilbar hai", "movie": "Hero", "singer": "Anuradha Paudwal", "type": "Soprano"}, {"year": 1984, "song": "Pyar kaa tohfa tera, bana hai jeevan mera", "movie": "Tohfa", "singer": "Asha Bhosle", "type": "Soprano"}, {"year": 1984, "song": "Ek aankh maroon toh parda hat jaye", "movie": "Tohfa", "singer": "Asha Bhosle", "type": "Soprano"}, {"year": 1984, "song": "Dono jawani ki masti mein choor", "movie": "Coolie", "singer": "Asha Bhosle", "type": "Soprano"}, {"year": 1984, "song": "De de, pyar de,  pyar de", "movie": "Sharaabi", "singer": "Asha Bhosle", "type": "Soprano"}, {"year": 1984, "song": "Mujhe naulakha mangwa de re", "movie": "Sharaabi", "singer": "Asha Bhosle", "type": "Soprano"}, {"year": 1984, "song": "Hamein aur jeeney ki chahat na hoti", "movie": "Agar Tum Na Hote", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1984, "song": "Ui, mar gayi, ui", "movie": "Ghar Ek Mandir", "singer": "Kavita Krishnamurthy", "type": "Soprano"}, {"year": 1985, "song": "Sun saiba, sun, pyar ki dhun", "movie": "Ram Teri Ganga Maili Ho Gayi", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1985, "song": "Tum se mil kar, na janey kyon", "movie": "Pyar Jhukta Nahin", "singer": "Kavita Krishnamurthy", "type": "Soprano"}, {"year": 1985, "song": "Yeh raat mein jo mazaa hai", "movie": "Kasam Paida Karne Wale Ki", "singer": "Salma Agha", "type": "Contralto"}, {"year": 1985, "song": "Chumma Chumma", "movie": "Paataal Bhairavi", "singer": "Salma Agha", "type": "Contralto"}, {"year": 1985, "song": "Daftar ko der ho gayi", "movie": "Haisiyat (1984)", "singer": "Asha Bhosle", "type": "Soprano"}, {"year": 1985, "song": "Chahey laakh toofan aaye, chahey jaan bhi ab  jaye", "movie": "Pyar Jhukta Nahin", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1985, "song": "O meri jaan, ab nahin rehna tere bina", "movie": "Manzil Manzil", "singer": "Asha Bhosle", "type": "Soprano"}, {"year": 1985, "song": "Jeene de yeh duniya, chahey maar daley", "movie": "Lava", "singer": "Asha Bhosle", "type": "Soprano"}, {"year": 1985, "song": "O Maria!  O Maria! Johnny jab bulata tujhko", "movie": "Saagar", "singer": "Asha Bhosle", "type": "Soprano"}, {"year": 1985, "song": "Tum yaad na aaya karo", "movie": "Jeene Nahin Doonga", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1987, "song": "Chal bhaag chalein poorab ki or", "movie": "Kalyug ki Ramayan", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1987, "song": "Mahi-vey, na jaiyo pardes", "movie": "Karma (1986)", "singer": "Kavita Krishnamurthy", "type": "Soprano"}, {"year": 1987, "song": "Main naagin tu sapera", "movie": "Nageena", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1987, "song": "Dance Dance  Dance", "movie": "Dance Dance", "singer": "Alisha Chinai", "type": "Mezzo-Soprano"}, {"year": 1987, "song": "Dil behelta hai mera (mai se,  meena se na saqi se)", "movie": "Khudgarz", "singer": "Sadhana Sargam", "type": "Soprano"}, {"year": 1988, "song": "Papa kehte hain badaa naam karega", "movie": "Qayamat Se Qayamat Tak", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1988, "song": "Tujhe itna pyaar karein", "movie": "Kudrat ka Kanoon", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1988, "song": "Naam saare mujhe bhool jaane lage", "movie": "Sindoor", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1988, "song": "O yaara tu pyaaron se hai pyaara", "movie": "Kaash", "singer": "Anupama", "type": "Mezzo-Soprano"}, {"year": 1988, "song": "Mein tera tota tu meri maina", "movie": "Paap Ki Duniya", "singer": "S. Janaki", "type": "Soprano"}, {"year": 1988, "song": "Angooli main angoothi, angoothi main nageena", "movie": "Ram Awatar", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1988, "song": "Janey do, janey do mujhe jaana hai (Kaun hai voh?)", "movie": "Shahenshah (1987)", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1988, "song": "Mai say meena say na saqi say", "movie": "Khudgarz (1987)", "singer": "Sadhana Sargam", "type": "Soprano"}, {"year": 1989, "song": "Saajan mera us paar hai", "movie": "Gunga Jamuna Saraswati", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1989, "song": "Mere haathon mein nau nau choodiyan", "movie": "Chandni", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1989, "song": "Kya karte thay saajna", "movie": "Lal Dupatta Malmal Ka", "singer": "Anuradha Paudwal", "type": "Soprano"}, {"year": 1989, "song": "Hum tumhein itna pyaar kareinge", "movie": "Bees Saal Baad", "singer": "Anuradha Paudwal", "type": "Soprano"}, {"year": 1989, "song": "Oye oye.........tirchhi topi waale, babu bhole", "movie": "Tridev", "singer": "Sapna Mukherjee", "type": "Mezzo-Soprano"}, {"year": 1989, "song": "Keh do ki tum meri ho varna", "movie": "Tezaab", "singer": "Anuradha Paudwal", "type": "Soprano"}, {"year": 1989, "song": "Tere Lakhan ne bada dukh deena", "movie": "Ram Lakhan", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1989, "song": "So gaya ye jahan, so gaya aasman", "movie": "Tezaab", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1990, "song": "Gori hain kalaiyan, tu laa-de mujhe hari- hari", "movie": "Aaj Ka Arjun", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1990, "song": "Terey hum hain sanam, pyar mein", "movie": "Jeena Teri Gali Mein (1999)", "singer": "Anuradha Paudwal", "type": "Soprano"}, {"year": 1990, "song": "Kabootar ja ja ja kabootar ja", "movie": "Maine Pyaar Kiya", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1990, "song": "Mujhe neend na aaye mujhe chain na aaye", "movie": "Dil", "singer": "Anuradha Paudwal", "type": "Soprano"}, {"year": 1990, "song": "Aapko dekh ke dekh dekh ke raaz gaya yeh jaan", "movie": "Kishen Kanhaiya", "singer": "Sadhna Sargam", "type": "Soprano"}, {"year": 1990, "song": "Jumma chumma de de, de de", "movie": "Hum", "singer": "Kavita Krishnamurthy", "type": "Soprano"}, {"year": 1990, "song": "Aaja shaam honay aayee mausam ne li angdaai", "movie": "Maine Pyaar Kiya", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1990, "song": "Kitne dino ke baad hai aayee sajna raat", "movie": "Aayee Milan Ki Raat", "singer": "Anuradha Paudwal", "type": "Soprano"}, {"year": 1990, "song": "Dil diwana bin sajna ke", "movie": "Maine Pyaar Kiya (1989)", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1990, "song": "Jeena teri gali mein", "movie": "Jeena Teri Gali Mein (1989)", "singer": "Anuradha Paudwal", "type": "Soprano"}, {"year": 1990, "song": "O Priya Priya kyon bhula diya", "movie": "Dil", "singer": "Anuradha Paudwal", "type": "Soprano"}, {"year": 1991, "song": "Dekha hai pehli bar, saajan ki aankhon mein pyar", "movie": "Saajan", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1991, "song": "Muhabbat inaayat karam dekhte hain", "movie": "Bahaar Aane Tak", "singer": "Anuradha Paudwal", "type": "Soprano"}, {"year": 1991, "song": "Kabhi tu chhaliya lagta hai", "movie": "Patthar Ke Phool", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1991, "song": "Dil hai ki manta nahin", "movie": "Dil Hai Ki Manta Nahin", "singer": "Anuradha Paudwal", "type": "Soprano"}, {"year": 1991, "song": "Saudaagar sauda kar dil de de dil lekar", "movie": "Saudagar", "singer": "Kavita Krishnamurthy", "type": "Soprano"}, {"year": 1991, "song": "Chudi mazaa na degi kangan maza na dega", "movie": "Sanam Bewafaa", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1991, "song": "Main hoon khush rang Henna", "movie": "Henna", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1991, "song": "Tune preet jo mujhse jodi", "movie": "Meera Ka Mohan", "singer": "Anuradha Paudwal", "type": "Soprano"}, {"year": 1991, "song": "Ilu ilu/ ilu ka matlab I love you", "movie": "Saudagar", "singer": "Kavita Krishnamurthy", "type": "Soprano"}, {"year": 1991, "song": "Tumse jo dekhte hi pyaar hua", "movie": "Patthar Ke Phool", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1992, "song": "Maine pyaar tumhi se kiya hai", "movie": "Phool Aur Kaante", "singer": "Anuradha Paudwal", "type": "Soprano"}, {"year": 1992, "song": "Koyal si teri boli", "movie": "Beta", "singer": "Anuradha Paudwal", "type": "Soprano"}, {"year": 1992, "song": "Aisi deewaangi dekhi nahin kabhi", "movie": "Deewana", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1992, "song": "Tu mujhe qubool mein tujhe qubool", "movie": "Khuda Gawah", "singer": "Kavita Krishnamurthy", "type": "Soprano"}, {"year": 1992, "song": "Tumhein apna banane ki qasam khaayee hai", "movie": "Sadak", "singer": "Anuradha Paudwal", "type": "Soprano"}, {"year": 1992, "song": "Teri ummeed tera intezaar karte hain", "movie": "Deewana", "singer": "Sadhna Sargam", "type": "Soprano"}, {"year": 1992, "song": "Saathiya tune kya kiya", "movie": "Love", "singer": "Chitra KS", "type": "Soprano"}, {"year": 1992, "song": "Vaada raha sanam honge juda na hum", "movie": "Khiladi", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1992, "song": "Aake teri baahon mein har shaam lage sindoori", "movie": "Vansh", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1992, "song": "Mere pyaar mein such such kaho...kabhi bhoola", "movie": "Sapne Saajan Ke", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1993, "song": "Choli ke peechhe kya hai, chunri ke neeche", "movie": "Khalnayak", "singer": "Ila Arun", "type": "Contralto"}, {"year": 1993, "song": "Tu tu tu, tu tu tara, todo na dil hamara", "movie": "Bol Radha Bol", "singer": "Poornima", "type": "Soprano"}, {"year": 1993, "song": "Baazigar O Baazigar", "movie": "Baazigar", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1993, "song": "Aankhon mein neendein na dil main qaraar", "movie": "Sanam", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1993, "song": "Aaj humne dil ka har qissa tamaam kar diya", "movie": "Sir", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1993, "song": "Choom loon honth tere dil ki yehi khwahish", "movie": "Shrimaan Aashique", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1993, "song": "Chehra kya dekhte ho dil mein utaar kar", "movie": "Salaami", "singer": "Asha Bhosle", "type": "Soprano"}, {"year": 1993, "song": "Teri muhabbat ne dil main muqaam kar diya", "movie": "Rang", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1993, "song": "Is jahan ki naheen hain tumhari aankhein", "movie": "King Uncle", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1994, "song": "Didi tera devar diwana", "movie": "Hum Aapke Hain Koun..!", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1994, "song": "Rah mein unse mulaqat ho gayi", "movie": "Vijaypath", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1994, "song": "Chura kay  dil mera, goriya chali", "movie": "Main Khiladi, Tu Anadi", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1994, "song": "Ma-ee ni  Ma-ee, mundar pe teri", "movie": "Hum Aapke Hain Koun..!", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1994, "song": "Wah wah Ramji", "movie": "Hum Aapke Hain Koun..!", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1994, "song": "Tu cheez badi hai mast-mast", "movie": "Mohra", "singer": "Kavita Krishnamurthy", "type": "Soprano"}, {"year": 1994, "song": "Tip tip barsa pani", "movie": "Mohra", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1994, "song": "Na kajre ki dhaar  na motiyon ke haar", "movie": "Mohra", "singer": "Sadhana Sargam", "type": "Soprano"}, {"year": 1995, "song": "Ho gaya hai tujh ko to pyar sajna", "movie": "Dilwale Dulhania Le Jayenge", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1995, "song": "Mehndi laga ke rakhna", "movie": "Dilwale Dulhania Le Jayenge", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1995, "song": "Mere khwabon mein", "movie": "Dilwale Dulhania Le Jayenge", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1995, "song": "Ram jaane", "movie": "Ram Jaane", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1995, "song": "Tujhe dekha to yeh jana sanam", "movie": "Dilwale Dulhania Le Jayenge", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1995, "song": "Raja ko rani say pyar ho gaya", "movie": "Akele Hum, Akele Tum", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1995, "song": "Tum mile, dil khile", "movie": "Criminal", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1995, "song": "Zara sa jhoom loon main", "movie": "Dilwale Dulhania Le Jayenge", "singer": "Asha Bhosle", "type": "Soprano"}, {"year": 1995, "song": "Phool mangoo na bahar mangoo", "movie": "Raja", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1995, "song": "Ankhiyan milaoon kabhi ankhiyan churaoon", "movie": "Raja", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1996, "song": "Pardesi, pardesi jana nahin", "movie": "Raja Hindustani", "singer": "Sapna Awasthi", "type": "Contralto"}, {"year": 1996, "song": "Aaj main oopar, aasmaan neeche", "movie": "Khamoshi: The Musical", "singer": "Kavita Krishnamurthy", "type": "Soprano"}, {"year": 1996, "song": "Aaye ho meri zindagi mein, tun bahaar ban kay", "movie": "Raja Hindustani", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1996, "song": "O humsafar, dil ke nagar", "movie": "Fareb", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1996, "song": "Bahon kay darmiyan do pyar", "movie": "Khamoshi: The Musical", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1996, "song": "Tu kaun hai, tera naam hai kya?", "movie": "Khiladiyon Ka Khiladi", "singer": "Sadhana Sargam", "type": "Soprano"}, {"year": 1997, "song": "Arey re arey  kya hua", "movie": "Dil To Pagal Hai", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1997, "song": "Dil to pagal hai", "movie": "Dil To Pagal Hai", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1997, "song": "Main koi aisa geet gaoon, ki aarzoo jagaoon", "movie": "Yes, Boss", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1997, "song": "Sona kitna sona hai, soney jaisa tera man", "movie": "Hero no. 1", "singer": "Poornima", "type": "Soprano"}, {"year": 1997, "song": "Bholi si soorat", "movie": "Dil To Pagal Hai", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1997, "song": "Zara tasveer se tu, nikal kar", "movie": "Pardes", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1997, "song": "Payali room-jhum,  room-jhum", "movie": "Viraasat", "singer": "Chitra KS", "type": "Soprano"}, {"year": 1998, "song": "Chal chhaiyan chhaiyan", "movie": "Dil Se", "singer": "Sapna Awasthi", "type": "Contralto"}, {"year": 1998, "song": "Kuch kuch hota hai", "movie": "Kuch Kuch Hota Hai", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1998, "song": "Jadoo hai tera hi", "movie": "Ghulam", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1998, "song": "O jaana na jaana", "movie": "Jab Pyaar Kisise Hota Hai", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1998, "song": "Kisi disco mein jayein, kisi hotel mein khayein", "movie": "Bade Miyan Chote Miyan", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1998, "song": "Jiya jaley, jaan jaley", "movie": "Dil Se", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1998, "song": "Ladki badi anjani hai", "movie": "Kuch Kuch Hota Hai", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1998, "song": "Aati kya Khandala?", "movie": "Ghulam", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1998, "song": "Chhamma-chhamma", "movie": "China Gate", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1998, "song": "Pyaar ko ho jaane do", "movie": "Dushman", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 1999, "song": "Taal se taal mila", "movie": "Taal", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1999, "song": "Ishq bina kya jeena yaro", "movie": "Taal", "singer": "Anuradha Sriram", "type": "Mezzo-Soprano"}, {"year": 1999, "song": "Mera man, kyon tujhe chahey?", "movie": "Mann", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1999, "song": "Rang dey, mujhe rang dey", "movie": "Thakshak", "singer": "Asha Bhosle", "type": "Soprano"}, {"year": 1999, "song": "Teri chunariya dil le gayi", "movie": "Hello, Brother", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1999, "song": "Pyar ke liye char pal", "movie": "Dil Kya Kare", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1999, "song": "Pehli pehli baar muhabbat kee hai", "movie": "Sirf Tum", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 1999, "song": "Tinak tin tana", "movie": "Mann", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 2000, "song": "Aja mahiya", "movie": "Fiza", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 2000, "song": "Mehboob", "movie": "Fiza", "singer": "Sunidhi Chauhan", "type": "Mezzo-Soprano"}, {"year": 2000, "song": "Na Tum Jaano Na Hum", "movie": "Kaho Naa... Pyaar Hai", "singer": "Ramya", "type": "Mezzo-Soprano"}, {"year": 2000, "song": "Bhumbro bhumbro shyam rang bhumbro", "movie": "Mission Kashmir", "singer": "Sunidhi Chauhan", "type": "Mezzo-Soprano"}, {"year": 2000, "song": "Qismat se tum hum ko mile ho", "movie": "Pukar", "singer": "Anuradha Paudwal", "type": "Soprano"}, {"year": 2000, "song": "Hum ko hameen se churalo", "movie": "Mohabbatein", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 2000, "song": "Tum dil ki dhadkan mein rehti ho", "movie": "Dhadkan", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 2000, "song": "Kitni bechain ho ke", "movie": "Kasoor", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 2001, "song": "Suraj hua maddham, chand jalney laga", "movie": "Kabhi Khushi Kabhie Gham", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 2001, "song": "Bolein choorhiyan boley kangana", "movie": "Kabhi Khushi Kabhie Gham", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 2001, "song": "Roshni se  Bhare Bhare Nainaa Tere", "movie": "Asoka", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 2001, "song": "Mitwa o mitwa", "movie": "Lagaan", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 2001, "song": "Kambakht ishq hai jo", "movie": "Pyaar Tune Kya Kiya", "singer": "Asha Bhosle", "type": "Soprano"}, {"year": 2001, "song": "Raat ka nasha", "movie": "Asoka", "singer": "Chitra KS", "type": "Soprano"}, {"year": 2001, "song": "Janey kyun log pyar kartey hain?", "movie": "Dil Chahta Hai", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 2001, "song": "Tujhe pyar se dekhney wala ik dil hee to hai", "movie": "Ek Rishta: The Bond of Love", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 2001, "song": "Meri zindagi mein  ajnabee ka intezaar hai", "movie": "Ajnabee", "singer": "Sunidhi Chauhan", "type": "Mezzo-Soprano"}, {"year": 2001, "song": "Tu sirf mera mehboob, main teri mehbooba", "movie": "Ajnabee", "singer": "Sunidhi Chauhan", "type": "Mezzo-Soprano"}, {"year": 2002, "song": "Chup ke se,  chup ke se, raat ki chadar taley", "movie": "Saathiya", "singer": "Sadhana Sargam", "type": "Soprano"}, {"year": 2002, "song": "Aapke pyar mein hum sawarney lage", "movie": "Raaz", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 2002, "song": "Khallas!", "movie": "Company", "singer": "Asha Bhosle", "type": "Soprano"}, {"year": 2002, "song": "Sharara, sharara", "movie": "Mere Yaar Ki Shaadi Hai", "singer": "Asha Bhosle", "type": "Soprano"}, {"year": 2002, "song": "Chhalka- chhalka re", "movie": "Saathiya", "singer": "Richa Sharma", "type": "Contralto"}, {"year": 2002, "song": "Dola re dola re", "movie": "Devdas", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2002, "song": "Maar daala", "movie": "Devdas", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2002, "song": "Kabhi sham dhaley to merey dil mein aa jana", "movie": "Sur", "singer": "Mahalaxmi Iyer", "type": "Mezzo-Soprano"}, {"year": 2002, "song": "Gustakhiyan Hain Betaabiyaan Hain", "movie": "Aankhen", "singer": "Vasundhara Das", "type": "Mezzo-Soprano"}, {"year": 2003, "song": "Jadoo hai nasha hai", "movie": "Jism", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2003, "song": "Tauba tumhare ye ishare", "movie": "Chalte Chalte", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 2003, "song": "Kuch naa kaho", "movie": "Kuch Naa Kaho", "singer": "Sadhana Sargam", "type": "Soprano"}, {"year": 2003, "song": "O saathiya", "movie": "Saaya", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 2003, "song": "Koi mil gaya", "movie": "Koi Mil Gaya", "singer": "Chitra KS", "type": "Soprano"}, {"year": 2003, "song": "Woh ladki bahut yaad", "movie": "Qayamat: City Under Threat", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 2004, "song": "Dhoom machale", "movie": "Dhoom", "singer": "Sunidhi Chauhan", "type": "Mezzo-Soprano"}, {"year": 2004, "song": "Tere liye, hum hain jiye", "movie": "Veer-Zaara", "singer": "Lata Mangeshkar", "type": "Soprano"}, {"year": 2004, "song": "Anjana anjaani", "movie": "Yuva", "singer": "Sunitha Sarathy", "type": "Mezzo-Soprano"}, {"year": 2004, "song": "Hum tumko nigaahon mein is tarah chhupa", "movie": "Garv", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2004, "song": "Talatum", "movie": "Aitraaz", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 2004, "song": "Hum tum", "movie": "Hum Tum", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 2005, "song": "Kajra re", "movie": "Bunty aur Babli", "singer": "Alisha Chinai", "type": "Mezzo-Soprano"}, {"year": 2005, "song": "Aashiq banaya aapne", "movie": "Aashiq Banaya Aapne", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2005, "song": "Piyu bole", "movie": "Parineeta", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2005, "song": "Tauba tauba", "movie": "Kaal", "singer": "Sunidhi Chauhan", "type": "Mezzo-Soprano"}, {"year": 2005, "song": "Agar tum mil jao zamana chhorh dengey hum", "movie": "Zeher", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2005, "song": "Baras ja ae badal", "movie": "Fareb- Twisted Love", "singer": "Sunidhi Chauhan", "type": "Mezzo-Soprano"}, {"year": 2006, "song": "Javeda zindagi", "movie": "Anwar", "singer": "Shilpa Rao", "type": "Contralto"}, {"year": 2006, "song": "Mere haath mein tera haath ho", "movie": "Fanaa", "singer": "Sunidhi Chauhan", "type": "Mezzo-Soprano"}, {"year": 2006, "song": "Aao sunau pyar ki ek kahani", "movie": "Krrish", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2006, "song": "Aashiqui mein teri jaayegi jaan meri", "movie": "36 China Town", "singer": "Sunidhi Chauhan", "type": "Mezzo-Soprano"}, {"year": 2006, "song": "Kabhi alvida naa kehna", "movie": "Kabhi Alvida Naa Kehna", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 2006, "song": "Beedi jalayi le", "movie": "Omkara", "singer": "Sunidhi Chauhan", "type": "Mezzo-Soprano"}, {"year": 2007, "song": "Aaja nachle nachle mere yaar tu nachle", "movie": "Aaja Nachle*", "singer": "Sunidhi Chauhan", "type": "Mezzo-Soprano"}, {"year": 2007, "song": "Ishq hua", "movie": "Aaja Nachle*", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2007, "song": "Jhoom barabar jhoom", "movie": "Jhoom Barabar Jhoom", "singer": "Mahalaxmi Iyer", "type": "Mezzo-Soprano"}, {"year": 2008, "song": "Khuda jaane", "movie": "Bachna Ae Haseeno", "singer": "Shilpa Rao", "type": "Contralto"}, {"year": 2008, "song": "Bakhuda tumhi ho", "movie": "Kismat Konnection", "singer": "Alka Yagnik", "type": "Soprano"}, {"year": 2008, "song": "Mar jaawaan", "movie": "Fashion", "singer": "Shruti Pathak", "type": "Mezzo-Soprano"}, {"year": 2008, "song": "Pappu can't dance, saala", "movie": "Jaane Tu Ya Jaane Na", "singer": "Tanvi", "type": "Mezzo-Soprano"}, {"year": 2008, "song": "Pappu can't dance, saala", "movie": "Jaane Tu Ya Jaane Na", "singer": "Anupama Deshpande", "type": "Mezzo-Soprano"}, {"year": 2008, "song": "Khwab dekhe", "movie": "Race", "singer": "Monali Thakur", "type": "Soprano"}, {"year": 2008, "song": "Zara zara touch me", "movie": "Race", "singer": "Monali Thakur", "type": "Soprano"}, {"year": 2009, "song": "Tera hone  laga hoon", "movie": "Ajab Prem Ki Ghazab Kahani", "singer": "Alisha Chinai", "type": "Mezzo-Soprano"}, {"year": 2009, "song": "Paisa", "movie": "De Dana Dan", "singer": "Selina", "type": "Mezzo-Soprano"}, {"year": 2010, "song": "Sheila ki jawani", "movie": "Tees Maar Khan", "singer": "Sunidhi Chauhan", "type": "Mezzo-Soprano"}, {"year": 2010, "song": "Munni badnaam hui", "movie": "Dabangg", "singer": "Mamta Sharma", "type": "Contralto"}, {"year": 2010, "song": "Munni badnaam hui", "movie": "Dabangg", "singer": "Aishwarya", "type": "Soprano"}, {"year": 2010, "song": "Aapka kya hoga", "movie": "Housefull", "singer": "Sunidhi Chauhan", "type": "Mezzo-Soprano"}, {"year": 2010, "song": "Bin tere", "movie": "I Hate Luv Storys", "singer": "Sunidhi Chauhan", "type": "Mezzo-Soprano"}, {"year": 2010, "song": "Sajda", "movie": "My Name Is Khan", "singer": "Richa Sharma", "type": "Contralto"}, {"year": 2011, "song": "Chhammak chhallo", "movie": "Ra.One", "singer": "Hamsika Iyer", "type": "Mezzo-Soprano"}, {"year": 2011, "song": "Character dheela", "movie": "Ready", "singer": "Amrita Kak", "type": "Mezzo-Soprano"}, {"year": 2011, "song": "Dhinka chika", "movie": "Ready", "singer": "Amrita Kak", "type": "Mezzo-Soprano"}, {"year": 2011, "song": "Saibo", "movie": "Shor In The City", "singer": "Shreya Ghosal", "type": "Soprano"}, {"year": 2011, "song": "Ooh la la", "movie": "The Dirty Picture", "singer": "Shreya Ghosal", "type": "Soprano"}, {"year": 2011, "song": "Dhunki", "movie": "Mere Brother Ki Dulhan", "singer": "Neha Bhasin", "type": "Mezzo-Soprano"}, {"year": 2012, "song": "Chikni chameli", "movie": "Agneepath", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2012, "song": "Pani da rang", "movie": "Vicky Donor", "singer": "Sukanya Purkayastha", "type": "Mezzo-Soprano"}, {"year": 2012, "song": "Tum hi ho Bandhu", "movie": "Cocktail", "singer": "Kavita Seth", "type": "Contralto"}, {"year": 2012, "song": "Disco Diwane", "movie": "Student Of The Year", "singer": "Sunidhi Chauhan", "type": "Mezzo-Soprano"}, {"year": 2012, "song": "Ishq wala love", "movie": "Student Of The Year", "singer": "Neeti Mohan", "type": "Mezzo-Soprano"}, {"year": 2012, "song": "Anarkali disco chali", "movie": "Housefull 2", "singer": "Mamta Sharma", "type": "Soprano"}, {"year": 2012, "song": "Dhadhang dhang", "movie": "Rowdy Rathore", "singer": "Mamta Sharma", "type": "Soprano"}, {"year": 2013, "song": "Lat lag gayee", "movie": "Race 2", "singer": "Shalmali Kholgade", "type": "Mezzo-Soprano"}, {"year": 2013, "song": "Balam pichkari", "movie": "Yeh Jawani Hai Deewani", "singer": "Shalmali Kholgade,", "type": "Mezzo-Soprano"}, {"year": 2013, "song": "Chahoon main ya na", "movie": "Aashiqui 2", "singer": "Palak Muchhal", "type": "Soprano"}, {"year": 2013, "song": "Sawar loon", "movie": "Lootera", "singer": "Monali Thakur", "type": "Soprano"}, {"year": 2013, "song": "O Laila", "movie": "Shootout at Wadala", "singer": "Sunidhi Chauhan", "type": "Mezzo-Soprano"}, {"year": 2013, "song": "Naino mein sapna", "movie": "Himmatwala (2013)", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2014, "song": "Manwa laage", "movie": "Happy New Year", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2014, "song": "Baby doll", "movie": "Ragini MMS 2", "singer": "Kanika Kapoor", "type": "Contralto"}, {"year": 2014, "song": "Aaj blue hai pani pani", "movie": "Yaariyan", "singer": "Neha Kakkar", "type": "Mezzo-Soprano"}, {"year": 2014, "song": "Je mainu yaar na mile", "movie": "Kick", "singer": "Jasmine Sandlas", "type": "Contralto"}, {"year": 2014, "song": "Man mast magan", "movie": "2 States", "singer": "Chinmayi Sripada", "type": "Soprano"}, {"year": 2015, "song": "Sooraj dooba hai", "movie": "Roy", "singer": "Aditi Singh Sharma", "type": "Mezzo-Soprano"}, {"year": 2015, "song": "Sun saathiya", "movie": "ABCD 2", "singer": "Priya Saraiya", "type": "Soprano"}, {"year": 2015, "song": "Chittiyaan kalaiyaan", "movie": "Roy", "singer": "Kanika Kapoor", "type": "Contralto"}, {"year": 2015, "song": "Bezubaan phir se", "movie": "ABCD 2", "singer": "Anushka Manchanda,", "type": "Contralto"}, {"year": 2015, "song": "Banno", "movie": "Tanu Weds Manu Returns", "singer": "Swati Sharma", "type": "Contralto"}, {"year": 2015, "song": "Gulaabo", "movie": "Shaandaar", "singer": "Anusha Mani", "type": "Mezzo-Soprano"}, {"year": 2016, "song": "Kar Gayi Chull", "movie": "Kapoor & Sons", "singer": "Sukriti Kakkar, Neha Kakkar.", "type": "Mezzo-Soprano"}, {"year": 2016, "song": "Gerua", "movie": "Dilwale", "singer": "Antara Mitra", "type": "Soprano"}, {"year": 2016, "song": "Baby Ko Bass Pasand Hai", "movie": "Sultan", "singer": "Shalmali Kholgade", "type": "Mezzo-Soprano"}, {"year": 2016, "song": "Kala Chashma", "movie": "Baar Baar Dekho", "singer": "Neha Kakkar", "type": "Mezzo-Soprano"}, {"year": 2016, "song": "Deewani Mastani", "movie": "Bajirao Mastani", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2016, "song": "Soch na Sake", "movie": "Airlift", "singer": "Tulsi Kumar", "type": "Soprano"}, {"year": 2016, "song": "Sab Tera", "movie": "Baaghi", "singer": "Shraddha Kapoor", "type": "Mezzo-Soprano"}, {"year": 2017, "song": "Phir Bhi Tumko Chaahunga", "movie": "Half Girlfriend", "singer": "Shashaa Tirupati", "type": "Mezzo-Soprano"}, {"year": 2017, "song": "Swag Se Swagat", "movie": "Tiger Zinda Hai", "singer": "Neha Bhasin", "type": "Mezzo-Soprano"}, {"year": 2017, "song": "Cheez Badi", "movie": "Machine", "singer": "Neha Kakkar", "type": "Mezzo-Soprano"}, {"year": 2017, "song": "Baarish", "movie": "Half Girlfriend", "singer": "Shashaa Tirupati", "type": "Mezzo-Soprano"}, {"year": 2018, "song": "Dilbar", "movie": "Satyameva Jayate", "singer": "Neha Kakkar, Dhvani Bhanushali", "type": "Mezzo-Soprano"}, {"year": 2018, "song": "Bom Diggy Diggy", "movie": "Sonu Ke Titu Ki Sweety", "singer": "Jasmin Walia", "type": "Mezzo-Soprano"}, {"year": 2018, "song": "Dil Chori", "movie": "Sonu Ke Titu Ki Sweety", "singer": "Simar Kaur", "type": "Contralto"}, {"year": 2018, "song": "Aankh Marey", "movie": "Simmba", "singer": "Neha Kakkar", "type": "Mezzo-Soprano"}, {"year": 2019, "song": "Ghungroo", "movie": "War", "singer": "Shilpa Rao", "type": "Contralto"}, {"year": 2019, "song": "Ve Maahi", "movie": "Kesari", "singer": "Asees Kaur", "type": "Mezzo-Soprano"}, {"year": 2019, "song": "Pal Pal Dil Ke Paas", "movie": "Pal Pal Dil Ke Paas", "singer": "Parampara Tandon", "type": "Mezzo-Soprano"}, {"year": 2019, "song": "Makhna", "movie": "Drive", "singer": "Asees Kaur", "type": "Mezzo-Soprano"}, {"year": 2019, "song": "Slow Motion", "movie": "Bharat", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2020, "song": "Garmi", "movie": "Street Dancer 3D", "singer": "Neha Kakkar", "type": "Mezzo-Soprano"}, {"year": 2020, "song": "Taare Ginn", "movie": "Dil Bechara", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2020, "song": "BurjKhalifa", "movie": "Laxmii", "singer": "Nikhita Gandhi", "type": "Mezzo-Soprano"}, {"year": 2020, "song": "Husnn Hai Suhana New", "movie": "Coolie No. 1", "singer": "Chandana Dixit", "type": "Soprano"}, {"year": 2021, "song": "Raataan Lambiyan", "movie": "Shershaah", "singer": "Asees Kaur", "type": "Mezzo-Soprano"}, {"year": 2021, "song": "Ranjha", "movie": "Shershaah", "singer": "Jasleen Royal", "type": "Mezzo-Soprano"}, {"year": 2021, "song": "Param Sundari", "movie": "Mimi", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2021, "song": "Chaka Chak", "movie": "Atrangi Re", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2021, "song": "Nadiyon Paar", "movie": "Roohi", "singer": "Rashmeet Kaur", "type": "Contralto"}, {"year": 2021, "song": "Sakhiyaan 2.0", "movie": "Bell Bottom", "singer": "Zara Khan", "type": "Mezzo-Soprano"}, {"year": 2021, "song": "Rait Zara Si", "movie": "Atrangi Re", "singer": "Shashaa Tirupati", "type": "Mezzo-Soprano"}, {"year": 2022, "song": "Deva Deva", "movie": "Brahmastra", "singer": "Jonita Gandhi", "type": "Mezzo-Soprano"}, {"year": 2022, "song": "Saami Saami (Hindi)", "movie": "Pushpa: The Rise", "singer": "Sunidhi Chauhan", "type": "Mezzo-Soprano"}, {"year": 2022, "song": "Manikike", "movie": "Thank God", "singer": "Yohani", "type": "Soprano"}, {"year": 2022, "song": "Dholida", "movie": "Gangubai Kathiawadi", "singer": "Janhvi Shrimankar", "type": "Contralto"}, {"year": 2022, "song": "Nach Punjaban", "movie": "Jugjugg Jeeyo", "singer": "Zahrah S Khan", "type": "Mezzo-Soprano"}, {"year": 2023, "song": "Jhoome Jo Pathaan", "movie": "Pathaan", "singer": "Sukriti Kakar", "type": "Mezzo-Soprano"}, {"year": 2023, "song": "Besharam Rang", "movie": "Pathaan", "singer": "Shilpa Rao", "type": "Contralto"}, {"year": 2023, "song": "Tere Pyaar Mein", "movie": "Tu Jhoothi Main Makkaar", "singer": "Nikhita Gandhi", "type": "Mezzo-Soprano"}, {"year": 2023, "song": "Chaleya", "movie": "Jawan", "singer": "Shilpa Rao", "type": "Contralto"}, {"year": 2023, "song": "What Jhumka?", "movie": "Rocky Aur Rani Kii Prem Kahaani", "singer": "Jonita Gandhi", "type": "Mezzo-Soprano"}, {"year": 2023, "song": "Tum Kya Mile", "movie": "Rocky Aur Rani Kii Prem Kahaani", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2024, "song": "Aaj Ki Raat", "movie": "Stree 2", "singer": "Madhubanti Bagchi", "type": "Contralto"}, {"year": 2024, "song": "Aayi Nai", "movie": "Stree 2", "singer": "Simran Choudhary", "type": "Contralto"}, {"year": 2024, "song": "Ve Kamleya", "movie": "Rocky Aur Rani Kii Prem Kahaani", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2024, "song": "Teri Baaton Mein Aisa Uljha Jiya", "movie": "Teri Baaton Mein Aisa Uljha Jiya", "singer": "Asees Kaur", "type": "Mezzo-Soprano"}, {"year": 2024, "song": "Chuttamalle (Hindi)", "movie": "Devara Part 1", "singer": "Shilpa Rao", "type": "Contralto"}, {"year": 2024, "song": "Soni Soni", "movie": "Ishq Vishk Rebound", "singer": "Jonita Gandhi", "type": "Mezzo-Soprano"}, {"year": 2025, "song": "Saiyaara", "movie": "Saiyaara", "singer": "Shilpa Rao", "type": "Contralto"}, {"year": 2025, "song": "Pardesiya", "movie": "Param Sundari", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2025, "song": "Aawan Jaavan", "movie": "WAR 2", "singer": "Jasleen Royal", "type": "Mezzo-Soprano"}, {"year": 2025, "song": "Uyi Amma", "movie": "Azaad", "singer": "Sunidhi Chauhan", "type": "Mezzo-Soprano"}, {"year": 2025, "song": "Gehra Hua", "movie": "Dhurandhar", "singer": "Shilpa Rao", "type": "Contralto"}, {"year": 2026, "song": "Fitratein", "movie": "Fitratein (Single)", "singer": "Shilpa Rao", "type": "Contralto"}, {"year": 2026, "song": "Ishq Jalakar", "movie": "Dhurandhar / Karvaan", "singer": "Jasleen Royal", "type": "Mezzo-Soprano"}, {"year": 2026, "song": "Qubool", "movie": "Qubool (Single)", "singer": "Parampara Tandon", "type": "Mezzo-Soprano"}, {"year": 2026, "song": "Aawaara Angaara", "movie": "Tere Ishk Mein", "singer": "Jonita Gandhi", "type": "Mezzo-Soprano"}, {"year": 2026, "song": "Deewaana Deewaana", "movie": "Tere Ishk Mein", "singer": "Shilpa Rao", "type": "Contralto"}, {"year": 2026, "song": "Lutt Le Gaya", "movie": "Dhurandhar", "singer": "Jasleen Royal", "type": "Mezzo-Soprano"}, {"year": 2026, "song": "Zamaana Lage", "movie": "Metro... In Dino", "singer": "Shreya Ghoshal", "type": "Soprano"}, {"year": 2005, "song": "Tauba tauba", "movie": "Kaal", "singer": "Richa Sharma", "type": "Contralto"}];
+
+const VOICE_COLORS = { 'Soprano': '#FFDC69', 'Mezzo-Soprano': '#FF6E7F', 'Contralto': '#9B02D4' };
+
+/* ============================================================
+   CHART LAYOUT — computed once, reused by slides 4, 5, 6
+   ============================================================ */
+let chartLayout = null;
+
+function computeChartLayout(){
+  const x0 = 176, x1 = 1650;
+  const yTop = 470, yBottom = 830;
+  const centerY = (yTop + yBottom) / 2;
+  const r = 7.4;
+
+  const xScale = d3.scaleLinear().domain([1980, 2030]).range([x0, x1]);
+
+  const nodes = SONG_DATA.map((d, i) => ({
+    ...d,
+    _id: i,
+    targetX: xScale(d.year),
+    x: xScale(d.year) + (Math.random()-0.5)*2,
+    y: centerY + (Math.random()-0.5)*8,
+    r
+  }));
+
+  const sim = d3.forceSimulation(nodes)
+    .force('x', d3.forceX(d => d.targetX).strength(1))
+    .force('y', d3.forceY(centerY).strength(0.05))
+    .force('collide', d3.forceCollide(d => d.r + 1).iterations(4))
+    .stop();
+
+  for(let i=0;i<260;i++) sim.tick();
+
+  // clamp within plot bounds
+  nodes.forEach(d=>{
+    d.y = Math.max(yTop, Math.min(yBottom, d.y));
+  });
+
+  chartLayout = { nodes, xScale, x0, x1, yTop, yBottom, centerY };
+}
+computeChartLayout();
+
+function findNode(songSubstr){
+  const q = songSubstr.toLowerCase();
+  return chartLayout.nodes.find(n => n.song.toLowerCase().includes(q));
+}
+
+/* Renders the shared beeswarm chart into the given SVG element.
+   opts: { tooltip: HTMLElement } */
+function renderSwarmChart(svgEl, opts={}){
+  const svg = d3.select(svgEl);
+  svg.selectAll('*').remove();
+  const { nodes, xScale, x0, x1, yTop, yBottom, centerY } = chartLayout;
+
+  svg.attr('viewBox', '0 0 1920 1080');
+
+  // center guideline
+  svg.append('line')
+    .attr('x1', x0-24).attr('x2', x1+30)
+    .attr('y1', centerY).attr('y2', centerY)
+    .attr('stroke', '#5b4a2c').attr('stroke-width', 1.2).attr('opacity', 0.4);
+
+  // y-axis stub
+  svg.append('line')
+    .attr('x1', x0-24).attr('x2', x0-24)
+    .attr('y1', yTop-70).attr('y2', yBottom+120)
+    .attr('stroke', '#1c1408').attr('stroke-width', 2);
+
+  // x-axis ticks + labels
+  const ticks = d3.range(1980, 2031, 5);
+  const axisG = svg.append('g');
+  ticks.forEach(yr=>{
+    const x = xScale(yr);
+    axisG.append('text')
+      .attr('x', x).attr('y', yBottom+150)
+      .attr('text-anchor','middle')
+      .attr('font-family', "'Iosevka Charon','Iosevka','IBM Plex Mono','PlexMonoEmbed',monospace")
+      .attr('font-size', '20px')
+      .attr('fill', '#1c1408')
+      .text(yr);
+  });
+  axisG.append('text')
+    .attr('x', x1+56).attr('y', yBottom+150)
+    .attr('font-family', "'Bernard MT Condensed','Oswald','OswaldEmbed',serif")
+    .attr('font-weight', 700)
+    .attr('font-size', '26px')
+    .attr('fill', '#1c1408')
+    .text('year');
+
+  // dots
+  const dotsG = svg.append('g').attr('class','dots-g');
+  const circles = dotsG.selectAll('circle').data(nodes, d=>d._id).join('circle')
+    .attr('cx', d=>d.x).attr('cy', d=>d.y).attr('r', d=>d.r)
+    .attr('fill', d=>VOICE_COLORS[d.type])
+    .attr('stroke','rgba(20,14,4,0.28)').attr('stroke-width',0.7)
+    .attr('data-type', d=>d.type)
+    .style('cursor','pointer')
+    .style('transition','opacity 200ms ease, r 150ms ease');
+
+  const tooltip = opts.tooltip;
+  if(tooltip){
+    circles.on('mouseenter', function(event, d){
+      d3.select(this).raise().attr('stroke','#1c1408').attr('stroke-width',2);
+      tooltip.innerHTML = `<div class="tt-song">${escapeHtml(d.song)}</div><div class="tt-meta">${escapeHtml(d.singer)} &mdash; ${escapeHtml(d.movie)}, ${d.year}</div>`;
+      tooltip.style.display = 'block';
+      positionTooltip(event, svgEl, tooltip);
+    }).on('mousemove', function(event){
+      positionTooltip(event, svgEl, tooltip);
+    }).on('mouseleave', function(){
+      d3.select(this).attr('stroke','rgba(20,14,4,0.28)').attr('stroke-width',0.7);
+      tooltip.style.display = 'none';
+    });
+  }
+
+  return { svg, circles, nodes };
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function positionTooltip(event, svgEl, tooltip){
+  const slideEl = svgEl.closest('.slide');
+  const slideRect = slideEl.getBoundingClientRect();
+  const scaleX = slideRect.width / 1920;
+  let x = (event.clientX - slideRect.left) / scaleX + 22;
+  let y = (event.clientY - slideRect.top) / scaleX - 14;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
+}
+
+/* ============================================================
+   LEGEND TOGGLE (slides 4 & 6 — interactive; slide 5 static)
+   ============================================================ */
+function wireLegendToggle(legendEl, circles){
+  const activeTypes = new Set(['Soprano','Mezzo-Soprano','Contralto']);
+  legendEl.querySelectorAll('.legend-item').forEach(item=>{
+    item.addEventListener('click', ()=>{
+      const type = item.dataset.type;
+      if(activeTypes.has(type)){
+        activeTypes.delete(type);
+        item.classList.add('is-off');
+      } else {
+        activeTypes.add(type);
+        item.classList.remove('is-off');
+      }
+      circles.attr('opacity', d => activeTypes.has(d.type) ? 1 : 0);
+      circles.style('pointer-events', d => activeTypes.has(d.type) ? 'auto' : 'none');
+    });
+  });
+}
+
+/* ============================================================
+   SEARCH HIGHLIGHT (slide 4)
+   ============================================================ */
+function wireSearch(singerInput, songInput, circles){
+  function update(){
+    const sq = singerInput.value.trim().toLowerCase();
+    const qq = songInput.value.trim().toLowerCase();
+    if(!sq && !qq){
+      circles.attr('opacity', 1).attr('r', d=>d.r);
+      return;
+    }
+    circles.each(function(d){
+      const matchSinger = !sq || d.singer.toLowerCase().includes(sq);
+      const matchSong = !qq || d.song.toLowerCase().includes(qq);
+      const match = matchSinger && matchSong;
+      d3.select(this)
+        .attr('opacity', match ? 1 : 0.1)
+        .attr('r', match ? d.r*1.35 : d.r);
+    });
+  }
+  singerInput.addEventListener('input', update);
+  songInput.addEventListener('input', update);
+}
+
+/* ============================================================
+   BUILD SLIDE 4, 5, 6 CHARTS
+   ============================================================ */
+const chart4 = renderSwarmChart(document.getElementById('chart4'), {tooltip: document.getElementById('tooltip4')});
+wireLegendToggle(document.getElementById('legend4'), chart4.circles);
+wireSearch(document.getElementById('searchSinger4'), document.getElementById('searchSong4'), chart4.circles);
+
+const chart5 = renderSwarmChart(document.getElementById('chart5'), {tooltip: document.getElementById('tooltip5')});
+// slide 5: legend is decorative only — no toggle wiring, no search bars
+
+const chart6 = renderSwarmChart(document.getElementById('chart6'), {tooltip: document.getElementById('tooltip6')});
+wireLegendToggle(document.getElementById('legend6'), chart6.circles);
+
+/* ---- Slide 6 highlight annotations: Dhoom (2004) & Fashion (2008) ---- */
+(function buildSlide6Highlights(){
+  const dhoomNode = findNode('Dhoom machale');
+  const fashionNode = findNode('Mar jaawaan');
+  const hSvg = d3.select('#highlight6');
+  hSvg.attr('viewBox','0 0 1920 1080');
+
+  function ring(node){
+    if(!node) return;
+    hSvg.append('circle')
+      .attr('cx', node.x).attr('cy', node.y).attr('r', node.r+5)
+      .attr('fill','none').attr('stroke','#171008').attr('stroke-width',2.5)
+      .attr('opacity',0.9);
+    hSvg.append('circle')
+      .attr('cx', node.x).attr('cy', node.y).attr('r', node.r+11)
+      .attr('fill','none').attr('stroke','#171008').attr('stroke-width',1)
+      .attr('opacity',0.4);
+  }
+  function leader(node, targetX, targetY){
+    if(!node) return;
+    hSvg.append('line')
+      .attr('x1', targetX).attr('y1', targetY)
+      .attr('x2', node.x).attr('y2', node.y-node.r-12)
+      .attr('stroke','#171008').attr('stroke-width',1.2)
+      .attr('stroke-dasharray','3,4')
+      .attr('opacity',0.55);
+  }
+
+  ring(dhoomNode);
+  ring(fashionNode);
+  // leader lines from bottom of each poster callout down to its bubble
+  leader(dhoomNode, 879, 400);
+  leader(fashionNode, 1034, 400);
+
+  // reposition poster callouts to sit near their node's x-position
+  if(dhoomNode){
+    document.getElementById('calloutDhoom').style.left = Math.max(100, dhoomNode.x - 110) + 'px';
+  }
+  if(fashionNode){
+    document.getElementById('calloutFashion').style.left = Math.max(270, fashionNode.x + 20) + 'px';
+  }
+})();
+
+
+/* ============================================================
+   AUDIO PLAYBACK (play buttons on slides 2 & 3)
+   ============================================================ */
+const AUDIO_SRC = {
+  soprano: 'assets/audio/soprano.mp3',
+  mezzo: 'assets/audio/mezzo.mp3',
+  contralto: 'assets/audio/contralto.mp3'
+};
+const audioPool = {};
+for(const key in AUDIO_SRC){
+  const a = new Audio(AUDIO_SRC[key]);
+  a.preload = 'none';
+  audioPool[key] = a;
+}
+let activeAudioKey = null;
+
+function stopAllAudio(){
+  Object.keys(audioPool).forEach(k=>{
+    audioPool[k].pause();
+    audioPool[k].currentTime = 0;
+  });
+  document.querySelectorAll('.play-btn.is-playing').forEach(b=> b.classList.remove('is-playing'));
+  activeAudioKey = null;
+}
+
+document.querySelectorAll('.play-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const key = btn.dataset.audio;
+    const isSame = activeAudioKey === key;
+    stopAllAudio();
+    if(!isSame){
+      audioPool[key].play().catch(()=>{});
+      activeAudioKey = key;
+      document.querySelectorAll(`.play-btn[data-audio="${key}"]`).forEach(b=> b.classList.add('is-playing'));
+      audioPool[key].addEventListener('ended', ()=>{
+        document.querySelectorAll(`.play-btn[data-audio="${key}"]`).forEach(b=> b.classList.remove('is-playing'));
+        activeAudioKey = null;
+      }, {once:true});
+    }
+  });
+});
+
+
+
+<!--SCRIPT_GOES_HERE-->
+</script>
+</body>
+</html>
